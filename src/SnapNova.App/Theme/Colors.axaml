@@ -1,0 +1,147 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- SnapNova design tokens (dark: #1E1E1E graphite, light: neutral white; accent orange #FF8C00). Contrast of text tokens ≥ 4.5:1 (WCAG AA), see docs/nfo/DESIGN.md -->
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Dark">
+      <Color x:Key="ColorBgApp">#1E1E1E</Color>
+      <Color x:Key="ColorBgSidebar">#232323</Color>
+      <Color x:Key="ColorSurfaceCard">#2A2A2A</Color>
+      <Color x:Key="ColorSurfaceRaised">#323232</Color>
+      <Color x:Key="ColorSurfaceHover">#3A3A3A</Color>
+      <Color x:Key="ColorBorder">#404040</Color>
+      <Color x:Key="ColorAccent">#FF8C00</Color>
+      <Color x:Key="ColorAccentHover">#FFA033</Color>
+      <Color x:Key="ColorAccentPressed">#E67E00</Color>
+      <Color x:Key="ColorAccentText">#FFA640</Color>
+      <Color x:Key="ColorAccentSoft">#3D2B14</Color>
+      <Color x:Key="ColorMenuHover">#4A3418</Color>
+      <Color x:Key="ColorTextPrimary">#FFFFFF</Color>
+      <Color x:Key="ColorTextSecondary">#B0B0B0</Color>
+      <Color x:Key="ColorTextDisabled">#7A7A7A</Color>
+      <Color x:Key="ColorSafe">#60C689</Color>
+      <Color x:Key="ColorSafeSoft">#24322D</Color>
+      <Color x:Key="ColorModerate">#F5B740</Color>
+      <Color x:Key="ColorModerateSoft">#393023</Color>
+      <Color x:Key="ColorDeep">#FF7A45</Color>
+      <Color x:Key="ColorDeepSoft">#3A2723</Color>
+      <Color x:Key="ColorInfo">#57ACDC</Color>
+      <Color x:Key="ColorInfoSoft">#232E39</Color>
+      <Color x:Key="ColorDanger">#B91C1C</Color>
+      <Color x:Key="ColorDangerHover">#DC2626</Color>
+      <Color x:Key="ColorDangerPressed">#991B1B</Color>
+      <Color x:Key="ColorShadow">#66000000</Color>
+      <SolidColorBrush x:Key="BrushBgApp" Color="#1E1E1E" />
+      <SolidColorBrush x:Key="BrushBgSidebar" Color="#232323" />
+      <SolidColorBrush x:Key="BrushSurfaceCard" Color="#2A2A2A" />
+      <SolidColorBrush x:Key="BrushSurfaceRaised" Color="#323232" />
+      <SolidColorBrush x:Key="BrushSurfaceHover" Color="#3A3A3A" />
+      <SolidColorBrush x:Key="BrushBorder" Color="#404040" />
+      <SolidColorBrush x:Key="BrushAccent" Color="#FF8C00" />
+      <SolidColorBrush x:Key="BrushAccentHover" Color="#FFA033" />
+      <SolidColorBrush x:Key="BrushAccentPressed" Color="#E67E00" />
+      <SolidColorBrush x:Key="BrushAccentText" Color="#FFA640" />
+      <SolidColorBrush x:Key="BrushAccentSoft" Color="#3D2B14" />
+      <SolidColorBrush x:Key="BrushMenuHover" Color="#4A3418" />
+      <SolidColorBrush x:Key="BrushTextPrimary" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="BrushTextSecondary" Color="#B0B0B0" />
+      <SolidColorBrush x:Key="BrushTextDisabled" Color="#7A7A7A" />
+      <SolidColorBrush x:Key="BrushSafe" Color="#60C689" />
+      <SolidColorBrush x:Key="BrushSafeSoft" Color="#24322D" />
+      <SolidColorBrush x:Key="BrushModerate" Color="#F5B740" />
+      <SolidColorBrush x:Key="BrushModerateSoft" Color="#393023" />
+      <SolidColorBrush x:Key="BrushDeep" Color="#FF7A45" />
+      <SolidColorBrush x:Key="BrushDeepSoft" Color="#3A2723" />
+      <SolidColorBrush x:Key="BrushInfo" Color="#57ACDC" />
+      <SolidColorBrush x:Key="BrushInfoSoft" Color="#232E39" />
+      <SolidColorBrush x:Key="BrushDanger" Color="#B91C1C" />
+      <SolidColorBrush x:Key="BrushDangerHover" Color="#DC2626" />
+      <SolidColorBrush x:Key="BrushDangerPressed" Color="#991B1B" />
+      <SolidColorBrush x:Key="BrushShadow" Color="#66000000" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Light">
+      <Color x:Key="ColorBgApp">#F7F7F7</Color>
+      <Color x:Key="ColorBgSidebar">#FFFFFF</Color>
+      <Color x:Key="ColorSurfaceCard">#FFFFFF</Color>
+      <Color x:Key="ColorSurfaceRaised">#F1F1F1</Color>
+      <Color x:Key="ColorSurfaceHover">#E8E8E8</Color>
+      <Color x:Key="ColorBorder">#D6D6D6</Color>
+      <Color x:Key="ColorAccent">#FF8C00</Color>
+      <Color x:Key="ColorAccentHover">#FFA033</Color>
+      <Color x:Key="ColorAccentPressed">#E67E00</Color>
+      <Color x:Key="ColorAccentText">#B35900</Color>
+      <Color x:Key="ColorAccentSoft">#FFF1DE</Color>
+      <Color x:Key="ColorMenuHover">#FFE0B8</Color>
+      <Color x:Key="ColorTextPrimary">#1E1E1E</Color>
+      <Color x:Key="ColorTextSecondary">#555555</Color>
+      <Color x:Key="ColorTextDisabled">#7A7A7A</Color>
+      <Color x:Key="ColorSafe">#1E7A4C</Color>
+      <Color x:Key="ColorSafeSoft">#E6F6EC</Color>
+      <Color x:Key="ColorModerate">#B45309</Color>
+      <Color x:Key="ColorModerateSoft">#FEF3C7</Color>
+      <Color x:Key="ColorDeep">#C2410C</Color>
+      <Color x:Key="ColorDeepSoft">#FFEDD5</Color>
+      <Color x:Key="ColorInfo">#1F5A94</Color>
+      <Color x:Key="ColorInfoSoft">#E3F1FA</Color>
+      <Color x:Key="ColorDanger">#B91C1C</Color>
+      <Color x:Key="ColorDangerHover">#DC2626</Color>
+      <Color x:Key="ColorDangerPressed">#991B1B</Color>
+      <Color x:Key="ColorShadow">#22000000</Color>
+      <SolidColorBrush x:Key="BrushBgApp" Color="#F7F7F7" />
+      <SolidColorBrush x:Key="BrushBgSidebar" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="BrushSurfaceCard" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="BrushSurfaceRaised" Color="#F1F1F1" />
+      <SolidColorBrush x:Key="BrushSurfaceHover" Color="#E8E8E8" />
+      <SolidColorBrush x:Key="BrushBorder" Color="#D6D6D6" />
+      <SolidColorBrush x:Key="BrushAccent" Color="#FF8C00" />
+      <SolidColorBrush x:Key="BrushAccentHover" Color="#FFA033" />
+      <SolidColorBrush x:Key="BrushAccentPressed" Color="#E67E00" />
+      <SolidColorBrush x:Key="BrushAccentText" Color="#B35900" />
+      <SolidColorBrush x:Key="BrushAccentSoft" Color="#FFF1DE" />
+      <SolidColorBrush x:Key="BrushMenuHover" Color="#FFE0B8" />
+      <SolidColorBrush x:Key="BrushTextPrimary" Color="#1E1E1E" />
+      <SolidColorBrush x:Key="BrushTextSecondary" Color="#555555" />
+      <SolidColorBrush x:Key="BrushTextDisabled" Color="#7A7A7A" />
+      <SolidColorBrush x:Key="BrushSafe" Color="#1E7A4C" />
+      <SolidColorBrush x:Key="BrushSafeSoft" Color="#E6F6EC" />
+      <SolidColorBrush x:Key="BrushModerate" Color="#B45309" />
+      <SolidColorBrush x:Key="BrushModerateSoft" Color="#FEF3C7" />
+      <SolidColorBrush x:Key="BrushDeep" Color="#C2410C" />
+      <SolidColorBrush x:Key="BrushDeepSoft" Color="#FFEDD5" />
+      <SolidColorBrush x:Key="BrushInfo" Color="#1F5A94" />
+      <SolidColorBrush x:Key="BrushInfoSoft" Color="#E3F1FA" />
+      <SolidColorBrush x:Key="BrushDanger" Color="#B91C1C" />
+      <SolidColorBrush x:Key="BrushDangerHover" Color="#DC2626" />
+      <SolidColorBrush x:Key="BrushDangerPressed" Color="#991B1B" />
+      <SolidColorBrush x:Key="BrushShadow" Color="#22000000" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+
+  <!-- Cancel of a running operation: solid red (white text 6.5:1) -->
+  <SolidColorBrush x:Key="BrushCancel" Color="#B91C1C" />
+  <SolidColorBrush x:Key="BrushCancelHover" Color="#DC2626" />
+  <SolidColorBrush x:Key="BrushCancelPressed" Color="#991B1B" />
+  <!-- Brand gradient (orange): progress bars, active navigation marker, logo -->
+  <LinearGradientBrush x:Key="BrushBrandGradient" StartPoint="0%,0%" EndPoint="100%,0%">
+    <GradientStop Offset="0" Color="#FFB347" />
+    <GradientStop Offset="0.5" Color="#FF8C00" />
+    <GradientStop Offset="1" Color="#E65C00" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="BrushLogoGradient" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Offset="0" Color="#FFA640" />
+    <GradientStop Offset="1" Color="#E66A00" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="BrushNavMarker" StartPoint="0%,0%" EndPoint="0%,100%">
+    <GradientStop Offset="0" Color="#FFA640" />
+    <GradientStop Offset="1" Color="#E66A00" />
+  </LinearGradientBrush>
+
+  <!-- Text on filled orange (primary buttons, capture actions): dark for contrast (≈ 8:1) -->
+  <SolidColorBrush x:Key="BrushOnAccent" Color="#1E1E1E" />
+  <!-- Recording state -->
+  <SolidColorBrush x:Key="BrushRecord" Color="#E53935" />
+
+
+  <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New</FontFamily>
+
+</ResourceDictionary>

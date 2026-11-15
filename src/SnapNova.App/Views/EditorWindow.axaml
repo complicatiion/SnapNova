@@ -1,0 +1,277 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctl="using:SnapNova.App.Controls"
+        x:Class="SnapNova.App.Views.EditorWindow"
+        Title="{Binding Title}"
+        Icon="/Assets/snapnova.ico"
+        Background="{DynamicResource BrushBgApp}"
+        MinWidth="760" MinHeight="480"
+        WindowStartupLocation="CenterScreen">
+
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Ctrl+Z" Command="{Binding UndoCommand}" />
+    <KeyBinding Gesture="Ctrl+Y" Command="{Binding RedoCommand}" />
+    <KeyBinding Gesture="Ctrl+Shift+Z" Command="{Binding RedoCommand}" />
+    <KeyBinding Gesture="Ctrl+C" Command="{Binding CopyCommand}" />
+    <KeyBinding Gesture="Ctrl+S" Command="{Binding SaveCommand}" />
+    <KeyBinding Gesture="Ctrl+E" Command="{Binding ExportCommand}" />
+    <KeyBinding Gesture="Ctrl+D0" Command="{Binding ZoomFitCommand}" />
+    <KeyBinding Gesture="Ctrl+D1" Command="{Binding ZoomActualCommand}" />
+  </Window.KeyBindings>
+
+  <DockPanel>
+
+    <!-- Toolbar: tools left, colour and stroke in the middle, actions right (main action Save on the far right) -->
+    <Border DockPanel.Dock="Top" Background="{DynamicResource BrushBgSidebar}" BorderBrush="{DynamicResource BrushBorder}"
+            BorderThickness="0,0,0,1" Padding="12,8">
+      <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+
+        <ListBox Classes="tools" ItemsSource="{Binding Tools}" SelectedItem="{Binding SelectedTool}">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="2" />
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <PathIcon Data="{Binding Icon}" Width="20" Height="20">
+                <ToolTip.Tip>
+                  <TextBlock>
+                    <Run Text="{Binding Tip}" />
+                    <Run Text="  " />
+                    <Run Text="{Binding Shortcut}" Foreground="{DynamicResource BrushTextSecondary}" />
+                  </TextBlock>
+                </ToolTip.Tip>
+              </PathIcon>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" Margin="18,0,0,0" VerticalAlignment="Center">
+          <Border Classes="divider vertical" />
+          <ListBox Classes="swatches" ItemsSource="{Binding Colors}" SelectedItem="{Binding SelectedColor}">
+            <ListBox.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="4" />
+              </ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemTemplate>
+              <DataTemplate>
+                <Border Width="20" Height="20" CornerRadius="10" Background="{Binding Brush}" BorderThickness="1"
+                        BorderBrush="{DynamicResource BrushBorder}" ToolTip.Tip="{Binding Name}" />
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+          <PathIcon Data="{StaticResource IconStrokeWidth}" Width="18" Height="18" ToolTip.Tip="{DynamicResource EdStroke}" />
+          <Slider Width="110" Minimum="1" Maximum="16" TickFrequency="1" IsSnapToTickEnabled="True"
+                  Value="{Binding StrokeWidth}" VerticalAlignment="Center" ToolTip.Tip="{DynamicResource EdStroke}" />
+          <!-- Text background: transparent (default), black, white or an own colour -->
+          <Button Classes="tool" IsVisible="{Binding ShowTextOptions}" ToolTip.Tip="{DynamicResource EdTextPlate}">
+            <Border Width="20" Height="20" CornerRadius="4" BorderThickness="1" BorderBrush="{DynamicResource BrushTextSecondary}"
+                    Background="{Binding PlateBrush}">
+              <TextBlock Text="A" FontWeight="Bold" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedLeft">
+                <StackPanel Spacing="8" Width="236">
+                  <TextBlock Text="{DynamicResource EdTextPlate}" FontWeight="SemiBold" />
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <ToggleButton Classes="plate" IsChecked="{Binding PlateIsNone, Mode=OneWay}" Command="{Binding SetPlateCommand}" CommandParameter="None"
+                                  ToolTip.Tip="{DynamicResource EdPlateNone}">
+                      <PathIcon Data="{StaticResource IconPlateNone}" Width="16" Height="16" />
+                    </ToggleButton>
+                    <ToggleButton Classes="plate" IsChecked="{Binding PlateIsBlack, Mode=OneWay}" Command="{Binding SetPlateCommand}" CommandParameter="Black"
+                                  ToolTip.Tip="{DynamicResource EdPlateBlack}">
+                      <Border Width="16" Height="16" CornerRadius="3" Background="Black" BorderBrush="#808080" BorderThickness="1" />
+                    </ToggleButton>
+                    <ToggleButton Classes="plate" IsChecked="{Binding PlateIsWhite, Mode=OneWay}" Command="{Binding SetPlateCommand}" CommandParameter="White"
+                                  ToolTip.Tip="{DynamicResource EdPlateWhite}">
+                      <Border Width="16" Height="16" CornerRadius="3" Background="White" BorderBrush="#808080" BorderThickness="1" />
+                    </ToggleButton>
+                  </StackPanel>
+                  <TextBlock Classes="small muted" Text="{DynamicResource EdPlateCustom}" />
+                  <ItemsControl ItemsSource="{Binding Colors}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <WrapPanel />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <Button Classes="swatch" Command="{Binding $parent[ItemsControl].DataContext.SetPlateColorCommand}" CommandParameter="{Binding}"
+                                ToolTip.Tip="{Binding Name}">
+                          <Border Width="20" Height="20" CornerRadius="10" Background="{Binding Brush}" BorderThickness="1" BorderBrush="{DynamicResource BrushBorder}" />
+                        </Button>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+        </StackPanel>
+
+        <!-- Symbol buttons (text in the tooltip); main action "Done" far right -->
+        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+          <Button Classes="tool" Command="{Binding UndoCommand}" IsEnabled="{Binding CanUndo}" ToolTip.Tip="{DynamicResource EdUndo}">
+            <PathIcon Data="{StaticResource IconUndo}" />
+          </Button>
+          <Button Classes="tool" Command="{Binding RedoCommand}" IsEnabled="{Binding CanRedo}" ToolTip.Tip="{DynamicResource EdRedo}">
+            <PathIcon Data="{StaticResource IconRedo}" />
+          </Button>
+          <Button Classes="tool" Command="{Binding DeleteSelectedCommand}" ToolTip.Tip="{DynamicResource EdDelete}">
+            <PathIcon Data="{StaticResource IconDelete}" />
+          </Button>
+          <Button Classes="tool" Command="{Binding DuplicateCommand}" IsEnabled="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}"
+                  ToolTip.Tip="{DynamicResource EdDuplicate}">
+            <PathIcon Data="{StaticResource IconDuplicate}" />
+          </Button>
+          <Button Classes="tool" Command="{Binding BringToFrontCommand}" IsEnabled="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}"
+                  ToolTip.Tip="{DynamicResource EdBringFront}">
+            <PathIcon Data="{StaticResource IconBringFront}" />
+          </Button>
+          <Button Classes="tool" Command="{Binding SendToBackCommand}" IsEnabled="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}"
+                  ToolTip.Tip="{DynamicResource EdSendBack}">
+            <PathIcon Data="{StaticResource IconSendBack}" />
+          </Button>
+          <Button Classes="tool" Command="{Binding ClearCropCommand}" IsVisible="{Binding HasCrop}" ToolTip.Tip="{DynamicResource EdClearCrop}">
+            <PathIcon Data="{StaticResource IconCrop}" />
+          </Button>
+          <Border Classes="divider vertical" Margin="6,0" />
+          <!-- Panel toggles: a click opens, a second click closes the side panel -->
+          <ToggleButton Classes="tool" Command="{Binding SmartRedactCommand}" IsChecked="{Binding IsRedactPanelOpen, Mode=OneWay}"
+                        ToolTip.Tip="{DynamicResource EdSmartRedact}">
+            <PathIcon Data="{StaticResource IconRedact}" />
+          </ToggleButton>
+          <ToggleButton Classes="tool" Command="{Binding ToggleTextPanelCommand}" IsChecked="{Binding IsTextPanelOpen, Mode=OneWay}"
+                        ToolTip.Tip="{DynamicResource EdCopyText}">
+            <PathIcon Data="{StaticResource IconTextRecognition}" />
+          </ToggleButton>
+          <Border Classes="divider vertical" Margin="6,0" />
+          <Button Classes="tool" Command="{Binding CopyCommand}" ToolTip.Tip="{DynamicResource EdCopyTip}">
+            <PathIcon Data="{StaticResource IconCopy}" />
+          </Button>
+          <Button Classes="tool" Command="{Binding ExportCommand}" ToolTip.Tip="{DynamicResource EdExportTip}">
+            <PathIcon Data="{StaticResource IconExport}" />
+          </Button>
+          <Button Classes="tool primary" Command="{Binding SaveAndCloseCommand}" ToolTip.Tip="{DynamicResource EdSaveCloseTip}" Margin="6,0,0,0">
+            <PathIcon Data="{StaticResource IconCheck}" />
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Status line: size · date · file size (origin as tooltip), message, zoom control -->
+    <Border DockPanel.Dock="Bottom" Background="{DynamicResource BrushBgSidebar}" BorderBrush="{DynamicResource BrushBorder}"
+            BorderThickness="0,1,0,0" Padding="14,4">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <StackPanel Orientation="Horizontal" Spacing="14" VerticalAlignment="Center" Background="Transparent" ToolTip.Tip="{Binding SourceTip}">
+          <ctl:IconLabel FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" Icon="{StaticResource IconImage}" Text="{Binding SizeText}" />
+          <ctl:IconLabel FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" Icon="{StaticResource IconClock}" Text="{Binding DateText}" />
+          <ctl:IconLabel FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" Icon="{StaticResource IconDocument}" Text="{Binding FileSizeText}" />
+        </StackPanel>
+        <TextBlock Grid.Column="1" Classes="small" Text="{Binding Status}" Foreground="{DynamicResource BrushAccentText}"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Margin="12,0" />
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+          <Button Classes="icon small" Command="{Binding ZoomOutCommand}" ToolTip.Tip="{DynamicResource EdZoomOut}">
+            <PathIcon Data="{StaticResource IconZoomOut}" />
+          </Button>
+          <Button x:Name="ZoomButton" Classes="zoomvalue" ToolTip.Tip="{DynamicResource EdZoomPresets}">
+            <TextBlock x:Name="ZoomText" Classes="small" TextAlignment="Center" />
+            <Button.Flyout>
+              <MenuFlyout Placement="TopEdgeAlignedRight">
+                <MenuItem Header="25 %" Command="{Binding ZoomToCommand}" CommandParameter="25" />
+                <MenuItem Header="50 %" Command="{Binding ZoomToCommand}" CommandParameter="50" />
+                <MenuItem Header="100 %" Command="{Binding ZoomToCommand}" CommandParameter="100" />
+                <MenuItem Header="200 %" Command="{Binding ZoomToCommand}" CommandParameter="200" />
+                <MenuItem Header="400 %" Command="{Binding ZoomToCommand}" CommandParameter="400" />
+                <Separator />
+                <MenuItem Header="{DynamicResource EdZoomFit}" Command="{Binding ZoomFitCommand}">
+                  <MenuItem.Icon>
+                    <PathIcon Data="{StaticResource IconFit}" />
+                  </MenuItem.Icon>
+                </MenuItem>
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+          <Button Classes="icon small" Command="{Binding ZoomInCommand}" ToolTip.Tip="{DynamicResource EdZoomIn}">
+            <PathIcon Data="{StaticResource IconZoomIn}" />
+          </Button>
+          <Border Classes="divider vertical" Margin="6,2" />
+          <Button Classes="icon small" Command="{Binding ZoomFitCommand}" ToolTip.Tip="{DynamicResource EdZoomFit}">
+            <PathIcon Data="{StaticResource IconFit}" />
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Smart Redact: suggestions to check, then apply -->
+    <Border x:Name="RedactPanel" DockPanel.Dock="Right" Width="300" IsVisible="{Binding IsRedactPanelOpen}" Background="{DynamicResource BrushBgSidebar}"
+            BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1,0,0,0" Padding="14">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,10">
+          <ctl:IconLabel Icon="{StaticResource IconRedact}" Text="{DynamicResource EdSmartRedact}" FontWeight="SemiBold" FontSize="15" />
+          <TextBlock Classes="small muted" Text="{DynamicResource EdRedactHint}" TextWrapping="Wrap" />
+          <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsRecognizing}" Height="3" MinHeight="3" />
+        </StackPanel>
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,*,Auto,Auto" Margin="0,10,0,0">
+          <Button Classes="tool" Command="{Binding SelectAllSuggestionsCommand}" IsEnabled="{Binding HasSuggestions}" ToolTip.Tip="{Binding SelectAllTip}">
+            <PathIcon Data="{Binding SelectAllIcon}" />
+          </Button>
+          <Button Grid.Column="2" Classes="tool" Command="{Binding CloseRedactCommand}" ToolTip.Tip="{DynamicResource BtnCancel}" Margin="0,0,6,0">
+            <PathIcon Data="{StaticResource IconClose}" />
+          </Button>
+          <Button Grid.Column="3" Classes="tool primary" Command="{Binding ApplyRedactCommand}" IsEnabled="{Binding HasSuggestions}"
+                  ToolTip.Tip="{DynamicResource EdRedactApply}">
+            <PathIcon Data="{StaticResource IconRedact}" />
+          </Button>
+        </Grid>
+        <ScrollViewer>
+          <ItemsControl ItemsSource="{Binding Suggestions}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Border Classes="raised" CornerRadius="8" Padding="10,6" Margin="0,0,0,6">
+                  <Grid ColumnDefinitions="Auto,*">
+                    <CheckBox IsChecked="{Binding IsChecked}" VerticalAlignment="Center" MinWidth="0" />
+                    <StackPanel Grid.Column="1" Spacing="2" Margin="6,0,0,0">
+                      <TextBlock Classes="small accent" Text="{Binding KindText}" FontWeight="SemiBold" />
+                      <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
+    <!-- Recognized text: select parts with the mouse (Ctrl+C) or copy everything -->
+    <Border x:Name="TextPanel" DockPanel.Dock="Right" Width="320" IsVisible="{Binding IsTextPanelOpen}" Background="{DynamicResource BrushBgSidebar}"
+            BorderBrush="{DynamicResource BrushBorder}" BorderThickness="1,0,0,0" Padding="14">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Spacing="6" Margin="0,0,0,10">
+          <ctl:IconLabel Icon="{StaticResource IconTextRecognition}" Text="{DynamicResource EdTextPanel}" FontWeight="SemiBold" FontSize="15" />
+          <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsRecognizing}" Height="3" MinHeight="3" />
+        </StackPanel>
+        <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto,Auto" Margin="0,10,0,0">
+          <Button Grid.Column="1" Classes="tool" Command="{Binding ClosePanelCommand}" ToolTip.Tip="{DynamicResource BtnClose}" Margin="0,0,6,0">
+            <PathIcon Data="{StaticResource IconClose}" />
+          </Button>
+          <Button Grid.Column="2" Classes="tool primary" Command="{Binding CopyAllTextCommand}" ToolTip.Tip="{DynamicResource EdCopyAllText}">
+            <PathIcon Data="{StaticResource IconCopy}" />
+          </Button>
+        </Grid>
+        <TextBox Text="{Binding RecognizedText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                 Watermark="{DynamicResource EdNoText}" VerticalContentAlignment="Top"
+                 ScrollViewer.VerticalScrollBarVisibility="Auto" />
+      </DockPanel>
+    </Border>
+
+    <!-- Canvas with an overlay layer for the inline text box -->
+    <Panel>
+      <ctl:AnnotationCanvas x:Name="Surface" />
+      <Canvas x:Name="Overlay" />
+    </Panel>
+  </DockPanel>
+</Window>

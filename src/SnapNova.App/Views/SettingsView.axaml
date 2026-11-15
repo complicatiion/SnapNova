@@ -1,0 +1,477 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctl="using:SnapNova.App.Controls"
+             x:Class="SnapNova.App.Views.SettingsView">
+
+  <UserControl.Styles>
+    <!-- One row: text (with optional hint below) left, control right; all controls share one width (styles .field / .hotkey) -->
+    <Style Selector="Grid.row">
+      <Setter Property="MinHeight" Value="40" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+    <Style Selector="Grid.row > ToggleSwitch">
+      <Setter Property="OnContent" Value="" />
+      <Setter Property="OffContent" Value="" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Grid.row > ComboBox">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.card > StackPanel">
+      <Setter Property="Spacing" Value="4" />
+    </Style>
+  </UserControl.Styles>
+
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Spacing="16" MaxWidth="920" HorizontalAlignment="Left" Margin="0,0,16,0">
+      <Border Classes="card">
+        <StackPanel>
+          <ctl:IconLabel Icon="{StaticResource IconCog}" Text="{DynamicResource SetGeneral}" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,8" />
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource LblLanguage}" VerticalAlignment="Center" />
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding Languages}" SelectedItem="{Binding Language}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Panel Width="20" Height="14">
+                      <Image Source="{Binding Flag}" Width="20" Height="14" />
+                      <PathIcon Data="{StaticResource IconGlobe}" Width="14" Height="14" IsVisible="{Binding IsAuto}" />
+                    </Panel>
+                    <TextBlock Text="{Binding Name}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource SetTheme}" VerticalAlignment="Center" />
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding Themes}" SelectedItem="{Binding Theme}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource SetDisplay}" VerticalAlignment="Center" />
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding Displays}" SelectedItem="{Binding Display}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource SetStartWithWindows}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding StartWithWindows}" IsEnabled="{Binding !IsPortable}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource SetStartInTray}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding StartInTray}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource SetMinimizeToTray}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding MinimizeToTray}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource SetAnimations}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Animations}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource SetTrayClick}" VerticalAlignment="Center" />
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding TrayActions}" SelectedItem="{Binding TrayAction}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource SetTrayRecordingClick}" VerticalAlignment="Center" />
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding RecordingClicks}" SelectedItem="{Binding RecordingClick}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+      <Border Classes="card">
+        <StackPanel>
+          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+            <ctl:IconLabel Icon="{StaticResource IconFolder}" Text="{DynamicResource SetStorageTitle}" FontWeight="SemiBold" FontSize="16" />
+            <Button Grid.Column="1" Classes="field" Command="{Binding ResetFoldersCommand}">
+              <ctl:IconLabel Icon="{StaticResource IconUndo}" Text="{DynamicResource SetDefault}" />
+            </Button>
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetStorage}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetStorageHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding StorageModes}" SelectedItem="{Binding Storage}" />
+          </Grid>
+          <StackPanel IsVisible="{Binding IsSeparate}" Margin="0,0,0,8">
+            <TextBlock Classes="label" Text="{DynamicResource SetImageFolder}" />
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBox Text="{Binding ImageFolder}" IsReadOnly="True" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="8,0,0,0">
+                <Button Classes="tool" Command="{Binding OpenFolderCommand}" CommandParameter="image" ToolTip.Tip="{DynamicResource GalOpenFolder}">
+                  <PathIcon Data="{StaticResource IconFolderOpen}" />
+                </Button>
+                <Button Classes="field" Command="{Binding BrowseFolderCommand}" CommandParameter="image">
+                  <ctl:IconLabel Icon="{StaticResource IconFolder}" Text="{DynamicResource SetBrowse}" />
+                </Button>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+          <StackPanel IsVisible="{Binding IsSeparate}" Margin="0,0,0,8">
+            <TextBlock Classes="label" Text="{DynamicResource SetVideoFolder}" />
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBox Text="{Binding VideoFolder}" IsReadOnly="True" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="8,0,0,0">
+                <Button Classes="tool" Command="{Binding OpenFolderCommand}" CommandParameter="video" ToolTip.Tip="{DynamicResource GalOpenFolder}">
+                  <PathIcon Data="{StaticResource IconFolderOpen}" />
+                </Button>
+                <Button Classes="field" Command="{Binding BrowseFolderCommand}" CommandParameter="video">
+                  <ctl:IconLabel Icon="{StaticResource IconFolder}" Text="{DynamicResource SetBrowse}" />
+                </Button>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+          <StackPanel IsVisible="{Binding IsCommon}" Margin="0,0,0,8">
+            <TextBlock Classes="label" Text="{DynamicResource SetCommonFolder}" />
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBox Text="{Binding CommonFolder}" IsReadOnly="True" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" Margin="8,0,0,0">
+                <Button Classes="tool" Command="{Binding OpenFolderCommand}" CommandParameter="common" ToolTip.Tip="{DynamicResource GalOpenFolder}">
+                  <PathIcon Data="{StaticResource IconFolderOpen}" />
+                </Button>
+                <Button Classes="field" Command="{Binding BrowseFolderCommand}" CommandParameter="common">
+                  <ctl:IconLabel Icon="{StaticResource IconFolder}" Text="{DynamicResource SetBrowse}" />
+                </Button>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+      <Border Classes="card">
+        <StackPanel>
+          <ctl:IconLabel Icon="{StaticResource IconCamera}" Text="{DynamicResource SetCapture}" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,8" />
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource SetOpenEditor}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding OpenEditorAfterCapture}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource SetCopyAfter}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding CopyAfterCapture}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetExcludeHistory}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetExcludeHistoryHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ExcludeFromHistory}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource SetIncludeCursor}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding IncludeCursor}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <ctl:IconLabel Icon="{StaticResource IconKeyboard}" Text="{DynamicResource SetPrintKey}" VerticalAlignment="Center" />
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding PrintKeyChoices}" SelectedItem="{Binding PrintKey}" />
+          </Grid>
+          <Border Classes="notice moderate" IsVisible="{Binding PrintKeyBlocked}" Margin="0,0,0,6">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Text="{DynamicResource SetPrintKeyBlocked}" TextWrapping="Wrap" VerticalAlignment="Center" />
+              <Button Grid.Column="1" Classes="field" Margin="10,0,0,0" Command="{Binding ReleasePrintKeyCommand}">
+                <ctl:IconLabel Icon="{StaticResource IconKeyboard}" Text="{DynamicResource SetPrintKeyRelease}" />
+              </Button>
+            </Grid>
+          </Border>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <ctl:IconLabel Icon="{StaticResource IconTimerCapture}" Text="{DynamicResource SetDelay}" VerticalAlignment="Center" />
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding Delays}" SelectedItem="{Binding Delay}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetScrollMode}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetScrollModeHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding ScrollModes}" SelectedItem="{Binding ScrollMode}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetRecognizeText}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetRecognizeTextHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding RecognizeText}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+      <Border Classes="card">
+        <StackPanel>
+          <ctl:IconLabel Icon="{StaticResource IconTrash}" Text="{DynamicResource SetTrashTitle}" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,8" />
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetTrashMode}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetTrashModeHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding TrashModes}" SelectedItem="{Binding TrashMode}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto" IsVisible="{Binding IsInternalTrash}">
+            <TextBlock Text="{DynamicResource SetTrashRetention}" VerticalAlignment="Center" />
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding Retentions}" SelectedItem="{Binding Retention}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+      <Border Classes="card">
+        <StackPanel>
+          <ctl:IconLabel Icon="{StaticResource IconFormat}" Text="{DynamicResource SetExport}" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,8" />
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource SetImageFormat}" VerticalAlignment="Center" />
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding ImageFormats}" SelectedItem="{Binding ImageFormat}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto" IsVisible="{Binding IsJpeg}">
+            <TextBlock Text="{DynamicResource SetJpegQuality}" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Width="220">
+              <Slider Width="170" Minimum="40" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding JpegQuality}" />
+              <TextBlock Text="{Binding JpegQuality}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetAutoExport}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetAutoExportHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoExportImage}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetVideoFormat}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetVideoFormatHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding VideoFormats}" SelectedItem="{Binding VideoFormat}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetRedactMode}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetRedactModeHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding RedactModes}" SelectedItem="{Binding RedactMode}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetRedactSystem}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetRedactSystemHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding RedactSystemNames}" />
+          </Grid>
+          <TextBlock Classes="label" Text="{DynamicResource SetRedactWords}" Margin="0,4,0,4" />
+          <TextBox Text="{Binding RedactWords}" Watermark="{DynamicResource SetRedactWordsHint}" />
+        </StackPanel>
+      </Border>
+      <Border Classes="card">
+        <StackPanel>
+          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+            <ctl:IconLabel Icon="{StaticResource IconKeyboard}" Text="{DynamicResource SetHotkeys}" FontWeight="SemiBold" FontSize="16" />
+            <Button Grid.Column="1" Classes="field" Command="{Binding ResetHotkeysCommand}">
+              <ctl:IconLabel Icon="{StaticResource IconRefresh}" Text="{DynamicResource SetDefault}" />
+            </Button>
+          </Grid>
+          <TextBlock Classes="small muted" Text="{DynamicResource SetHotkeysHint}" TextWrapping="Wrap" Margin="0,0,0,6" />
+          <Border Classes="notice moderate" IsVisible="{Binding HotkeyWarning, Converter={x:Static ObjectConverters.IsNotNull}}" Margin="0,0,0,6">
+            <TextBlock Text="{Binding HotkeyWarning}" TextWrapping="Wrap" />
+          </Border>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <ctl:IconLabel Icon="{StaticResource IconSelection}" Text="{DynamicResource PickRegion}" VerticalAlignment="Center" />
+            <ctl:HotkeyBox Grid.Column="1" Hotkey="{Binding HotkeyRegion}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <ctl:IconLabel Icon="{StaticResource IconWindow}" Text="{DynamicResource PickWindow}" VerticalAlignment="Center" />
+            <ctl:HotkeyBox Grid.Column="1" Hotkey="{Binding HotkeyWindow}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <ctl:IconLabel Icon="{StaticResource IconMonitor}" Text="{DynamicResource PickFullScreen}" VerticalAlignment="Center" />
+            <ctl:HotkeyBox Grid.Column="1" Hotkey="{Binding HotkeyFullScreen}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <ctl:IconLabel Icon="{StaticResource IconScrollCapture}" Text="{DynamicResource PickScrolling}" VerticalAlignment="Center" />
+            <ctl:HotkeyBox Grid.Column="1" Hotkey="{Binding HotkeyScrolling}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <ctl:IconLabel Icon="{StaticResource IconTimerCapture}" Text="{DynamicResource PickDelayed}" VerticalAlignment="Center" />
+            <ctl:HotkeyBox Grid.Column="1" Hotkey="{Binding HotkeyDelayed}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <ctl:IconLabel Icon="{StaticResource IconVideo}" Text="{DynamicResource SetHotkeyVideo}" VerticalAlignment="Center" />
+            <ctl:HotkeyBox Grid.Column="1" Hotkey="{Binding HotkeyVideo}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <ctl:IconLabel Icon="{StaticResource IconVideoMonitor}" Text="{DynamicResource TrayVideoFullScreen}" VerticalAlignment="Center" />
+            <ctl:HotkeyBox Grid.Column="1" Hotkey="{Binding HotkeyVideoFullScreen}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <ctl:IconLabel Icon="{StaticResource IconPause}" Text="{DynamicResource SetHotkeyPause}" VerticalAlignment="Center" />
+            <ctl:HotkeyBox Grid.Column="1" Hotkey="{Binding HotkeyPause}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+      <Border Classes="card">
+        <StackPanel>
+          <ctl:IconLabel Icon="{StaticResource IconVideo}" Text="{DynamicResource SetVideo}" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,8" />
+          <Border x:Name="FfmpegCard" Classes="raised" CornerRadius="10" Padding="14,10" Margin="0,0,0,8">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+              <PathIcon Data="{StaticResource IconFilm}" Width="22" Height="22" Margin="0,0,12,0" Foreground="{DynamicResource BrushAccentText}" />
+              <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                <TextBlock Text="FFmpeg" FontWeight="SemiBold" />
+                <TextBlock Classes="small muted" Text="{Binding FfmpegStatus}" TextWrapping="Wrap" />
+              </StackPanel>
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Button Classes="field" IsVisible="{Binding FfmpegInstalled}" Command="{Binding RemoveFfmpegCommand}">
+                  <ctl:IconLabel Icon="{StaticResource IconDelete}" Text="{DynamicResource FfRemove}" />
+                </Button>
+                <Button Classes="field primary" IsVisible="{Binding !FfmpegInstalled}" Command="{Binding InstallFfmpegCommand}">
+                  <ctl:IconLabel Icon="{StaticResource IconDownload}" Text="{DynamicResource FfInstall}" />
+                </Button>
+              </StackPanel>
+            </Grid>
+          </Border>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource SetFps}" VerticalAlignment="Center" />
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding FpsChoices}" SelectedItem="{Binding Fps}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetQuality}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetQualityHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" Width="220">
+              <Slider Width="170" Minimum="10" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding Quality}" />
+              <TextBlock Text="{Binding Quality}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetEncoder}" />
+              <TextBlock Classes="small muted" Text="{Binding DetectedEncoderText}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+              <Button Classes="tool" Command="{Binding TestEncodersCommand}" IsEnabled="{Binding FfmpegInstalled}" ToolTip.Tip="{DynamicResource SetTestEncoders}">
+                <PathIcon Data="{StaticResource IconChip}" />
+              </Button>
+              <ComboBox Classes="field" ItemsSource="{Binding Encoders}" SelectedItem="{Binding Encoder}" />
+            </StackPanel>
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <ctl:IconLabel Icon="{StaticResource IconSpeaker}" Text="{DynamicResource SetSystemSound}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding RecordSystemSound}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <ctl:IconLabel Icon="{StaticResource IconMicrophone}" Text="{DynamicResource SetMicrophone}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding RecordMicrophone}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <ctl:IconLabel Icon="{StaticResource IconPointer}" Text="{DynamicResource SetVideoCursor}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding VideoShowCursor}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetCursorHighlight}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetCursorHighlightHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding CursorHighlight}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetClickEffects}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetClickEffectsHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ClickEffects}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetShowToolbar}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetShowToolbarHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowRecordingToolbar}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource SetShowFrame}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowRecordingFrame}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource SetOpenGallery}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding OpenGalleryAfterRecording}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetPlayer}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetPlayerHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding Players}" SelectedItem="{Binding Player}" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8" IsVisible="{Binding IsCustomPlayer}">
+            <TextBox Text="{Binding CustomPlayer}" IsReadOnly="True" Watermark="{DynamicResource SetPlayerPick}" />
+            <Button Grid.Column="1" Classes="field" Margin="8,0,0,0" Command="{Binding BrowsePlayerCommand}">
+              <ctl:IconLabel Icon="{StaticResource IconFileSearch}" Text="{DynamicResource SetBrowse}" />
+            </Button>
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetGpl}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetGplHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding UseGplBuild}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+      <Border Classes="card">
+        <StackPanel>
+          <ctl:IconLabel Icon="{StaticResource IconScissors}" Text="{DynamicResource SetCutTitle}" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,8" />
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetTrimTarget}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetTrimTargetHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding TrimTargets}" SelectedItem="{Binding TrimTarget}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource SetVideoLoop}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding VideoLoop}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+      <Border Classes="card">
+        <StackPanel>
+          <ctl:IconLabel Icon="{StaticResource IconMultiRecord}" Text="{DynamicResource SetSecondTitle}" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,8" />
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetSecondaryAudio}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetSecondaryAudioHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding SecondaryAudios}" SelectedItem="{Binding SecondaryAudio}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource SetSecondaryMic}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding SecondaryMicrophone}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+      <Border Classes="card">
+        <StackPanel>
+          <ctl:IconLabel Icon="{StaticResource IconUpdate}" Text="{DynamicResource SetUpdates}" FontWeight="SemiBold" FontSize="16" Margin="0,0,0,8" />
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource SetUpdateCheck}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding UpdateCheck}" />
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+            <TextBlock Classes="small muted" Text="{Binding UpdateStatus}" VerticalAlignment="Center" TextWrapping="Wrap" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+              <Button Classes="field" Command="{Binding CheckUpdatesCommand}">
+                <ctl:IconLabel Icon="{StaticResource IconRefresh}" Text="{DynamicResource UpdCheck}" />
+              </Button>
+              <Button Classes="field primary" Command="{Binding DownloadUpdateCommand}" IsVisible="{Binding HasUpdate}">
+                <ctl:IconLabel Icon="{StaticResource IconDownload}" Text="{DynamicResource UpdDownload}" />
+              </Button>
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+      <Border Classes="card">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="2" VerticalAlignment="Center">
+            <ctl:IconLabel Icon="{StaticResource IconFolderOpen}" Text="{DynamicResource SetData}" FontWeight="SemiBold" FontSize="16" />
+            <TextBlock Classes="small muted" Text="{Binding DataFolder}" Margin="24,0,0,0" />
+          </StackPanel>
+          <Button Grid.Column="1" Classes="field" Command="{Binding OpenDataFolderCommand}" VerticalAlignment="Center">
+            <ctl:IconLabel Icon="{StaticResource IconOpenInNew}" Text="{DynamicResource SetOpenData}" />
+          </Button>
+        </Grid>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

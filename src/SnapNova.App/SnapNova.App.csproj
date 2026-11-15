@@ -1,0 +1,142 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Windows 10 2004+: WinRT projection for Windows.Media.Ocr (text recognition, Smart Redact) -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>SnapNova.App</RootNamespace>
+    <AssemblyName>SnapNova</AssemblyName>
+    <AssemblyTitle>SnapNova</AssemblyTitle>
+    <Description>SnapNova – screen capture and screen recording for Windows</Description>
+    <ApplicationIcon>Assets\snapnova.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Lower idle memory: workstation GC that returns memory to Windows more eagerly -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredPGO>true</TieredPGO>
+
+    <!-- Always self-contained for 64-bit Windows: every build and publish carries the .NET runtime, so nothing has to be
+         installed on the target PC (also when publishing from Visual Studio). -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <!-- Release: ReadyToRun (precompiled) – pages open much faster the first time; the output grows by about a third. -->
+    <PublishReadyToRun Condition="'$(Configuration)' == 'Release'">true</PublishReadyToRun>
+    <PublishReadyToRun Condition="'$(Configuration)' != 'Release'">false</PublishReadyToRun>
+
+    <!-- Release build (Visual Studio or dotnet build -c Release): also publish to artifacts\publish\SnapNova and compile the
+         setup with Inno Setup 6 if it is installed. Off with -p:SnapNovaSetup=false (build\publish.ps1 does that itself). -->
+    <SnapNovaSetup Condition="'$(SnapNovaSetup)' == '' and '$(Configuration)' == 'Release'">true</SnapNovaSetup>
+    <SnapNovaRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\..\'))</SnapNovaRoot>
+    <SnapNovaArtifacts>$(SnapNovaRoot)artifacts</SnapNovaArtifacts>
+    <SnapNovaPublishDir>$(SnapNovaArtifacts)\publish\SnapNova</SnapNovaPublishDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="7" />
+    <RuntimeHostConfigurationOption Include="System.GC.RetainVM" Value="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="Avalonia.Diagnostics" Condition="'$(Configuration)' == 'Debug'" />
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SnapNova.Core\SnapNova.Core.csproj" />
+    <ProjectReference Include="..\SnapNova.Platform.Windows\SnapNova.Platform.Windows.csproj" />
+  </ItemGroup>
+
+  <!-- Shipped next to the app: licenses (About page) and README -->
+  <ItemGroup>
+    <None Include="..\..\licenses\**\*" Link="licenses\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\README.md" Link="README.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- ===================================================================== Release: publish + setup -->
+
+  <!-- Release build: publish the just-built app (no second build) to artifacts\publish\SnapNova, then build the setup.
+       (Separate targets in DependsOnTargets so the compile step sees the properties of the steps before it.) -->
+  <Target Name="SnapNovaPublishAfterBuild" AfterTargets="Build"
+          Condition="'$(SnapNovaSetup)' == 'true' and '$(SnapNovaInner)' != 'true' and '$(_IsPublishing)' != 'true' and '$(PublishProfile)' == '' and '$(DeployOnBuild)' != 'true' and '$(DesignTimeBuild)' != 'true' and '$(BuildingForLiveUnitTesting)' != 'true'"
+          DependsOnTargets="_SnapNovaPublishNow;SnapNovaSetupCompile;SnapNovaPortableZip" />
+
+  <Target Name="_SnapNovaPublishNow">
+    <Message Importance="high" Text="SnapNova: publishing self-contained to $(SnapNovaPublishDir) ..." />
+    <RemoveDir Directories="$(SnapNovaPublishDir)" />
+    <Exec Command="dotnet publish &quot;$(MSBuildProjectFullPath)&quot; -c $(Configuration) -r $(RuntimeIdentifier) --self-contained true --no-build &quot;-p:Platform=$(Platform)&quot; -p:SnapNovaInner=true -p:CopyOutputSymbolsToPublishDirectory=false -o &quot;$(SnapNovaPublishDir)&quot;" />
+  </Target>
+
+  <!-- Publish from Visual Studio (profile Release-win-x64) or dotnet publish -c Release: build the setup afterwards. -->
+  <Target Name="SnapNovaSetupAfterPublish" AfterTargets="Publish"
+          Condition="'$(SnapNovaSetup)' == 'true' and '$(SnapNovaInner)' != 'true' and '$(DesignTimeBuild)' != 'true'"
+          DependsOnTargets="_SnapNovaUsePublishDir;SnapNovaSetupCompile;SnapNovaPortableZip" />
+
+  <Target Name="_SnapNovaUsePublishDir">
+    <PropertyGroup>
+      <SnapNovaPublishDir>$([System.IO.Path]::GetFullPath($([System.IO.Path]::Combine('$(MSBuildProjectDirectory)', '$(PublishDir)'))).TrimEnd('\'))</SnapNovaPublishDir>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="SnapNovaSetupCompile">
+    <PropertyGroup>
+      <_SnapNovaIssDir>$(SnapNovaRoot)build\installer</_SnapNovaIssDir>
+      <_SnapNovaIsccReg>$([MSBuild]::GetRegistryValueFromView('HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Inno Setup 6_is1', 'InstallLocation', null, RegistryView.Registry32, RegistryView.Registry64))</_SnapNovaIsccReg>
+      <SnapNovaIscc Condition="'$(SnapNovaIscc)' == '' and '$(_SnapNovaIsccReg)' != '' and Exists('$(_SnapNovaIsccReg)\ISCC.exe')">$(_SnapNovaIsccReg)\ISCC.exe</SnapNovaIscc>
+      <SnapNovaIscc Condition="'$(SnapNovaIscc)' == '' and Exists('$(MSBuildProgramFiles32)\Inno Setup 6\ISCC.exe')">$(MSBuildProgramFiles32)\Inno Setup 6\ISCC.exe</SnapNovaIscc>
+      <SnapNovaIscc Condition="'$(SnapNovaIscc)' == '' and Exists('$(ProgramW6432)\Inno Setup 6\ISCC.exe')">$(ProgramW6432)\Inno Setup 6\ISCC.exe</SnapNovaIscc>
+      <SnapNovaIscc Condition="'$(SnapNovaIscc)' == '' and Exists('$(LOCALAPPDATA)\Programs\Inno Setup 6\ISCC.exe')">$(LOCALAPPDATA)\Programs\Inno Setup 6\ISCC.exe</SnapNovaIscc>
+    </PropertyGroup>
+
+    <!-- The runtime must be in the output – otherwise the setup would need .NET on the target PC. -->
+    <Error Condition="!Exists('$(SnapNovaPublishDir)\coreclr.dll')"
+           Text="SnapNova: $(SnapNovaPublishDir) is not self-contained (coreclr.dll missing) – the setup was not built." />
+    <Warning Condition="'$(SnapNovaIscc)' == ''"
+             Text="SnapNova: Inno Setup 6 (ISCC.exe) not found – app published to $(SnapNovaPublishDir), setup skipped. https://jrsoftware.org/isinfo.php" />
+    <Message Condition="'$(SnapNovaIscc)' != ''" Importance="high" Text="SnapNova: building the setup with $(SnapNovaIscc) ..." />
+    <Exec Condition="'$(SnapNovaIscc)' != ''" WorkingDirectory="$(_SnapNovaIssDir)"
+          Command="&quot;$(SnapNovaIscc)&quot; /Q &quot;/DAppVersion=$(Version)&quot; &quot;/DSourceDir=$(SnapNovaPublishDir)&quot; &quot;/DOutputDir=$(SnapNovaArtifacts)&quot; snapnova.iss" />
+    <Message Condition="'$(SnapNovaIscc)' != ''" Importance="high" Text="SnapNova: setup → $(SnapNovaArtifacts)\snapnova_v$(Version)_setup.exe" />
+  </Target>
+
+  <!-- Portable ZIP (with the SnapNova.portable marker: data in .\data) and SHA-256 files for ZIP and setup – same output as build\publish.ps1. -->
+  <Target Name="SnapNovaPortableZip">
+    <PropertyGroup>
+      <_SnapNovaName>snapnova_v$(Version)</_SnapNovaName>
+      <_SnapNovaStaging>$(SnapNovaArtifacts)\$(_SnapNovaName)_portable</_SnapNovaStaging>
+      <_SnapNovaZip>$(SnapNovaArtifacts)\$(_SnapNovaName)_portable.zip</_SnapNovaZip>
+      <_SnapNovaSetupExe>$(SnapNovaArtifacts)\$(_SnapNovaName)_setup.exe</_SnapNovaSetupExe>
+    </PropertyGroup>
+    <ItemGroup>
+      <_SnapNovaPortableFiles Include="$(SnapNovaPublishDir)\**\*" />
+    </ItemGroup>
+    <RemoveDir Directories="$(_SnapNovaStaging)" />
+    <Delete Files="$(_SnapNovaZip);$(_SnapNovaZip).sha256" />
+    <Copy SourceFiles="@(_SnapNovaPortableFiles)" DestinationFiles="@(_SnapNovaPortableFiles->'$(_SnapNovaStaging)\SnapNova\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <WriteLinesToFile File="$(_SnapNovaStaging)\SnapNova\SnapNova.portable" Lines="Portable mode: settings and the library index are stored in .\data" Overwrite="true" />
+    <ZipDirectory SourceDirectory="$(_SnapNovaStaging)" DestinationFile="$(_SnapNovaZip)" Overwrite="true" />
+    <RemoveDir Directories="$(_SnapNovaStaging)" />
+    <GetFileHash Files="$(_SnapNovaZip)" Algorithm="SHA256" HashEncoding="hex">
+      <Output TaskParameter="Hash" PropertyName="_SnapNovaZipHash" />
+    </GetFileHash>
+    <WriteLinesToFile File="$(_SnapNovaZip).sha256" Lines="$(_SnapNovaZipHash.ToLowerInvariant())  $(_SnapNovaName)_portable.zip" Overwrite="true" />
+    <Message Importance="high" Text="SnapNova: portable → $(_SnapNovaZip)" />
+    <GetFileHash Condition="Exists('$(_SnapNovaSetupExe)')" Files="$(_SnapNovaSetupExe)" Algorithm="SHA256" HashEncoding="hex">
+      <Output TaskParameter="Hash" PropertyName="_SnapNovaSetupHash" />
+    </GetFileHash>
+    <WriteLinesToFile Condition="Exists('$(_SnapNovaSetupExe)')" File="$(_SnapNovaSetupExe).sha256"
+                      Lines="$(_SnapNovaSetupHash.ToLowerInvariant())  $(_SnapNovaName)_setup.exe" Overwrite="true" />
+  </Target>
+
+</Project>

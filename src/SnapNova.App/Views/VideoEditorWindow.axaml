@@ -1,0 +1,166 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctl="using:SnapNova.App.Controls"
+        x:Class="SnapNova.App.Views.VideoEditorWindow"
+        Title="{Binding Title}"
+        Icon="/Assets/snapnova.ico"
+        Background="{DynamicResource BrushBgApp}"
+        MinWidth="820" MinHeight="540"
+        WindowStartupLocation="CenterScreen">
+
+  <Window.KeyBindings>
+    <KeyBinding Gesture="Space" Command="{Binding PlayPauseCommand}" />
+    <KeyBinding Gesture="I" Command="{Binding TrimStartHereCommand}" />
+    <KeyBinding Gesture="O" Command="{Binding TrimEndHereCommand}" />
+    <KeyBinding Gesture="OemOpenBrackets" Command="{Binding MarkInCommand}" />
+    <KeyBinding Gesture="OemCloseBrackets" Command="{Binding MarkOutCommand}" />
+    <KeyBinding Gesture="X" Command="{Binding CutOutCommand}" />
+    <KeyBinding Gesture="Delete" Command="{Binding DeleteKeyCommand}" />
+    <KeyBinding Gesture="Escape" Command="{Binding ClearMarkCommand}" />
+  </Window.KeyBindings>
+
+  <DockPanel>
+
+    <!-- Top bar: exact cut left, status in the middle, exports right (main action "save cut video" far right) -->
+    <Border DockPanel.Dock="Top" Background="{DynamicResource BrushBgSidebar}" BorderBrush="{DynamicResource BrushBorder}"
+            BorderThickness="0,0,0,1" Padding="12,8">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <ToggleSwitch IsChecked="{Binding ExactCut}" OnContent="{DynamicResource VedExact}" OffContent="{DynamicResource VedExact}"
+                      VerticalAlignment="Center" ToolTip.Tip="{DynamicResource VedExactTip}" />
+        <TextBlock Grid.Column="1" Classes="small muted" Text="{Binding Status}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis" Margin="12,0" />
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" IsEnabled="{Binding !IsBusy}">
+          <Button Classes="tool" IsVisible="{Binding CanFollow}" ToolTip.Tip="{DynamicResource VedFollowTip}">
+            <PathIcon Data="{StaticResource IconFollow}" />
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedRight">
+                <StackPanel Spacing="10" Width="240">
+                  <TextBlock Text="{DynamicResource VedFollowTip}" FontWeight="SemiBold" />
+                  <Grid ColumnDefinitions="Auto,*,Auto">
+                    <TextBlock Text="{DynamicResource VedZoom}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <Slider Grid.Column="1" Minimum="1.25" Maximum="4" TickFrequency="0.25" IsSnapToTickEnabled="True" Value="{Binding FollowZoom}" />
+                    <TextBlock Grid.Column="2" Text="{Binding FollowZoom, StringFormat={}{0:0.##}×}" VerticalAlignment="Center" Margin="10,0,0,0" MinWidth="36" />
+                  </Grid>
+                  <Button Classes="primary" HorizontalAlignment="Right" Command="{Binding ExportCommand}" CommandParameter="Follow">
+                    <ctl:IconLabel Icon="{StaticResource IconExport}" Text="{DynamicResource VedExportBtn}" />
+                  </Button>
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+          <Button Classes="tool" Command="{Binding ExportCommand}" CommandParameter="WebM" ToolTip.Tip="{DynamicResource VedWebmTip}">
+            <PathIcon Data="{StaticResource IconFormat}" />
+          </Button>
+          <Button Classes="tool" ToolTip.Tip="{DynamicResource VedGifTip}">
+            <PathIcon Data="{StaticResource IconGif}" />
+            <Button.Flyout>
+              <Flyout Placement="BottomEdgeAlignedRight">
+                <StackPanel Spacing="10" Width="240">
+                  <TextBlock Text="{DynamicResource VedGifTip}" FontWeight="SemiBold" />
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{DynamicResource VedGifWidth}" VerticalAlignment="Center" />
+                    <ComboBox Grid.Column="1" Width="120" ItemsSource="{Binding GifWidths}" SelectedItem="{Binding GifWidth}" />
+                  </Grid>
+                  <Button Classes="primary" HorizontalAlignment="Right" Command="{Binding ExportCommand}" CommandParameter="Gif">
+                    <ctl:IconLabel Icon="{StaticResource IconExport}" Text="{DynamicResource VedExportBtn}" />
+                  </Button>
+                </StackPanel>
+              </Flyout>
+            </Button.Flyout>
+          </Button>
+          <Border Classes="divider vertical" Margin="6,6" />
+          <Button Classes="tool primary" Command="{Binding ExportCommand}" CommandParameter="Trim" ToolTip.Tip="{DynamicResource VedTrimTip}">
+            <PathIcon Data="{StaticResource IconScissors}" />
+          </Button>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <!-- Bottom: timeline; cut tools left, player controls centred, status pill right -->
+    <Border DockPanel.Dock="Bottom" Background="{DynamicResource BrushBgSidebar}" BorderBrush="{DynamicResource BrushBorder}"
+            BorderThickness="0,1,0,0" Padding="12,8,12,10">
+      <StackPanel Spacing="6">
+        <ctl:TimelineBar x:Name="Timeline">
+          <!-- Right click: acts on the playhead position / the cut-out part under the mouse -->
+          <ctl:TimelineBar.ContextMenu>
+            <ContextMenu>
+              <MenuItem Header="{DynamicResource VedTrimStartTip}" Command="{Binding TrimStartHereCommand}">
+                <MenuItem.Icon><PathIcon Data="{StaticResource IconTrimStart}" /></MenuItem.Icon>
+              </MenuItem>
+              <MenuItem Header="{DynamicResource VedTrimEndTip}" Command="{Binding TrimEndHereCommand}">
+                <MenuItem.Icon><PathIcon Data="{StaticResource IconTrimEnd}" /></MenuItem.Icon>
+              </MenuItem>
+              <Separator />
+              <MenuItem Header="{DynamicResource VedMarkInTip}" Command="{Binding MarkInCommand}">
+                <MenuItem.Icon><PathIcon Data="{StaticResource IconMarkIn}" /></MenuItem.Icon>
+              </MenuItem>
+              <MenuItem Header="{DynamicResource VedMarkOutTip}" Command="{Binding MarkOutCommand}">
+                <MenuItem.Icon><PathIcon Data="{StaticResource IconMarkOut}" /></MenuItem.Icon>
+              </MenuItem>
+              <MenuItem Classes="danger" Header="{DynamicResource VedCutOutTip}" Command="{Binding CutOutCommand}">
+                <MenuItem.Icon><PathIcon Data="{StaticResource IconCutOut}" /></MenuItem.Icon>
+              </MenuItem>
+              <MenuItem Header="{DynamicResource VedRestoreCutTip}" Command="{Binding RestoreCutCommand}">
+                <MenuItem.Icon><PathIcon Data="{StaticResource IconRestoreCut}" /></MenuItem.Icon>
+              </MenuItem>
+              <Separator />
+              <MenuItem Header="{DynamicResource VedResetCut}" Command="{Binding ResetCutCommand}">
+                <MenuItem.Icon><PathIcon Data="{StaticResource IconUndo}" /></MenuItem.Icon>
+              </MenuItem>
+            </ContextMenu>
+          </ctl:TimelineBar.ContextMenu>
+        </ctl:TimelineBar>
+        <Grid ColumnDefinitions="*,Auto,*">
+          <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center" HorizontalAlignment="Left">
+            <Button Classes="tool" Command="{Binding TrimStartHereCommand}" ToolTip.Tip="{DynamicResource VedTrimStartTip}">
+              <PathIcon Data="{StaticResource IconTrimStart}" />
+            </Button>
+            <Button Classes="tool" Command="{Binding TrimEndHereCommand}" ToolTip.Tip="{DynamicResource VedTrimEndTip}">
+              <PathIcon Data="{StaticResource IconTrimEnd}" />
+            </Button>
+            <Border Classes="divider vertical" Margin="6,6" />
+            <Button Classes="tool" Command="{Binding MarkInCommand}" ToolTip.Tip="{DynamicResource VedMarkInTip}">
+              <PathIcon Data="{StaticResource IconMarkIn}" />
+            </Button>
+            <Button Classes="tool" Command="{Binding MarkOutCommand}" ToolTip.Tip="{DynamicResource VedMarkOutTip}">
+              <PathIcon Data="{StaticResource IconMarkOut}" />
+            </Button>
+            <Button Classes="tool danger" Command="{Binding CutOutCommand}" ToolTip.Tip="{DynamicResource VedCutOutTip}" ToolTip.ShowOnDisabled="True">
+              <PathIcon Data="{StaticResource IconCutOut}" />
+            </Button>
+            <Button Classes="tool" Command="{Binding RestoreCutCommand}" ToolTip.Tip="{DynamicResource VedRestoreCutTip}" ToolTip.ShowOnDisabled="True">
+              <PathIcon Data="{StaticResource IconRestoreCut}" />
+            </Button>
+            <Border Classes="divider vertical" Margin="6,6" />
+            <Button Classes="tool" Command="{Binding ResetCutCommand}" ToolTip.Tip="{DynamicResource VedResetCut}">
+              <PathIcon Data="{StaticResource IconUndo}" />
+            </Button>
+          </StackPanel>
+
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <ToggleButton Classes="tool" IsChecked="{Binding Loop}" ToolTip.Tip="{DynamicResource VedLoopTip}">
+              <PathIcon Data="{StaticResource IconRepeat}" />
+            </ToggleButton>
+            <Button Classes="tool primary" Command="{Binding PlayPauseCommand}" ToolTip.Tip="{DynamicResource VedPlayTip}">
+              <Panel>
+                <PathIcon Data="{StaticResource IconPlay}" IsVisible="{Binding !IsPlaying}" />
+                <PathIcon Data="{StaticResource IconPause}" IsVisible="{Binding IsPlaying}" />
+              </Panel>
+            </Button>
+            <TextBlock Text="{Binding PositionText}" VerticalAlignment="Center" Margin="8,0,0,0" MinWidth="120" FontFamily="{DynamicResource MonoFont}" />
+          </StackPanel>
+
+          <Border Grid.Column="2" Classes="cutpill" Classes.cut="{Binding IsCut}" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <ctl:IconLabel Icon="{StaticResource IconScissors}" Text="{Binding CutText}" IconSize="14" VerticalAlignment="Center" />
+          </Border>
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <Panel Background="#101010">
+      <Image x:Name="Frame" Stretch="Uniform" Margin="12" />
+      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsBusy}" VerticalAlignment="Top" Height="3" MinHeight="3" />
+    </Panel>
+  </DockPanel>
+</Window>

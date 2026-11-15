@@ -1,0 +1,265 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ctl="using:SnapNova.App.Controls"
+             x:Class="SnapNova.App.Views.GalleryView"
+             Focusable="True">
+
+  <DockPanel>
+    <!-- Left: filter chips and count (same size). Right: search | view, sort | paste, refresh, folders | select all, delete -->
+    <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,14">
+      <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+        <ToggleButton Classes="filter" IsChecked="{Binding FilterAll}" IsVisible="{Binding IsGalleryPage}">
+          <ctl:IconLabel Icon="{StaticResource IconAll}" Text="{DynamicResource GalAll}" IconSize="14" />
+        </ToggleButton>
+        <ToggleButton Classes="filter" IsChecked="{Binding FilterImages}" IsVisible="{Binding IsGalleryPage}">
+          <ctl:IconLabel Icon="{StaticResource IconImage}" Text="{DynamicResource GalImages}" IconSize="14" />
+        </ToggleButton>
+        <ToggleButton Classes="filter" IsChecked="{Binding FilterVideos}" IsVisible="{Binding IsGalleryPage}">
+          <ctl:IconLabel Icon="{StaticResource IconVideo}" Text="{DynamicResource GalVideos}" IconSize="14" />
+        </ToggleButton>
+        <Border Classes="countpill header">
+          <TextBlock Classes="small" Text="{Binding CountText}" HorizontalAlignment="Center" />
+        </Border>
+      </StackPanel>
+
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+        <TextBox Classes="search" Watermark="{DynamicResource GalSearch}" Text="{Binding Search}">
+          <TextBox.InnerLeftContent>
+            <PathIcon Data="{StaticResource IconMagnify}" Width="16" Height="16" Margin="10,0,0,0" />
+          </TextBox.InnerLeftContent>
+        </TextBox>
+        <Border Classes="divider vertical" Margin="8,4" />
+        <ToggleButton Classes="tool" IsChecked="{Binding !IsList, Mode=OneWay}" Command="{Binding ShowGridCommand}" ToolTip.Tip="{DynamicResource GalGrid}">
+          <PathIcon Data="{StaticResource IconGrid}" />
+        </ToggleButton>
+        <ToggleButton Classes="tool" IsChecked="{Binding IsList, Mode=OneWay}" Command="{Binding ShowListCommand}" ToolTip.Tip="{DynamicResource GalList}">
+          <PathIcon Data="{StaticResource IconListView}" />
+        </ToggleButton>
+        <Button Classes="tool" ToolTip.Tip="{Binding SortTip}">
+          <PathIcon Data="{Binding SortIcon}" />
+          <Button.Flyout>
+            <MenuFlyout>
+              <MenuItem Header="{DynamicResource GalSortDateDesc}" Command="{Binding SetSortCommand}" CommandParameter="DateDesc">
+                <MenuItem.Icon><PathIcon Data="{StaticResource IconSortDesc2}" /></MenuItem.Icon>
+              </MenuItem>
+              <MenuItem Header="{DynamicResource GalSortDateAsc}" Command="{Binding SetSortCommand}" CommandParameter="DateAsc">
+                <MenuItem.Icon><PathIcon Data="{StaticResource IconSortAsc}" /></MenuItem.Icon>
+              </MenuItem>
+              <MenuItem Header="{DynamicResource GalSortNameAsc}" Command="{Binding SetSortCommand}" CommandParameter="NameAsc">
+                <MenuItem.Icon><PathIcon Data="{StaticResource IconSortAZ}" /></MenuItem.Icon>
+              </MenuItem>
+              <MenuItem Header="{DynamicResource GalSortNameDesc}" Command="{Binding SetSortCommand}" CommandParameter="NameDesc">
+                <MenuItem.Icon><PathIcon Data="{StaticResource IconSortZA}" /></MenuItem.Icon>
+              </MenuItem>
+            </MenuFlyout>
+          </Button.Flyout>
+        </Button>
+        <Border Classes="divider vertical" Margin="8,4" />
+        <Button Classes="tool" Command="{Binding PasteCommand}" ToolTip.Tip="{DynamicResource GalPasteTip}" IsVisible="{Binding IsGalleryPage}">
+          <PathIcon Data="{StaticResource IconPaste}" />
+        </Button>
+        <Button Classes="tool" Command="{Binding RefreshCommand}" ToolTip.Tip="{DynamicResource GalRefresh}">
+          <PathIcon Data="{StaticResource IconRefresh}" />
+        </Button>
+        <Panel IsVisible="{Binding IsGalleryPage}">
+          <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding IsSeparateStorage}">
+            <Button Classes="tool" Command="{Binding OpenImageFolderCommand}" ToolTip.Tip="{DynamicResource GalOpenImageFolder}">
+              <PathIcon Data="{StaticResource IconFolderImage}" />
+            </Button>
+            <Button Classes="tool" Command="{Binding OpenVideoFolderCommand}" ToolTip.Tip="{DynamicResource GalOpenVideoFolder}">
+              <PathIcon Data="{StaticResource IconFolderVideo}" />
+            </Button>
+          </StackPanel>
+          <Button Classes="tool" Command="{Binding OpenFolderCommand}" ToolTip.Tip="{DynamicResource GalOpenFolder}" IsVisible="{Binding IsCommonStorage}">
+            <PathIcon Data="{StaticResource IconFolderOpen}" />
+          </Button>
+        </Panel>
+        <Button Classes="tool" Command="{Binding RestoreCommand}" ToolTip.Tip="{DynamicResource GalRestore}" IsVisible="{Binding IsTrashPage}"
+                IsEnabled="{Binding HasSelection}">
+          <PathIcon Data="{StaticResource IconRestore}" />
+        </Button>
+        <Border Classes="divider vertical" Margin="8,4" />
+        <Button Classes="tool" Command="{Binding ToggleSelectAllCommand}" ToolTip.Tip="{Binding SelectAllTip}">
+          <PathIcon Data="{Binding SelectAllIcon}" />
+        </Button>
+        <Button Classes="tool danger" Command="{Binding DeleteSelectedCommand}" ToolTip.Tip="{Binding DeleteTip}"
+                ToolTip.ShowOnDisabled="True">
+          <PathIcon Data="{StaticResource IconTrash}" />
+        </Button>
+      </StackPanel>
+    </Grid>
+
+    <Panel>
+      <!-- Empty library -->
+      <StackPanel IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="14" MaxWidth="520">
+        <PathIcon Data="{StaticResource IconGallery}" Width="56" Height="56" Foreground="{DynamicResource BrushAccentText}" HorizontalAlignment="Center" />
+        <TextBlock Classes="h2" Text="{DynamicResource GalEmptyTitle}" HorizontalAlignment="Center" />
+        <TextBlock Classes="muted" Text="{DynamicResource GalEmptyText}" TextWrapping="Wrap" TextAlignment="Center" />
+        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" Margin="0,6,0,0" IsVisible="{Binding IsLibraryView}">
+          <Button Classes="capture" Command="{Binding CaptureVideoCommand}">
+            <ctl:IconLabel Icon="{StaticResource IconVideo}" Text="{DynamicResource PickVideo}" />
+          </Button>
+          <Button Classes="capture primary" Command="{Binding CaptureImageCommand}">
+            <ctl:IconLabel Icon="{StaticResource IconSelection}" Text="{DynamicResource PickRegion}" />
+          </Button>
+        </StackPanel>
+      </StackPanel>
+
+      <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" VerticalAlignment="Top" Height="2" MinHeight="2" />
+
+      <!-- Virtualized rows: grid rows of several cards, or one list row per capture -->
+      <ListBox x:Name="List" Classes="rows" ItemsSource="{Binding Rows}" Background="Transparent" BorderThickness="0" Padding="0"
+               ScrollViewer.HorizontalScrollBarVisibility="Disabled" SelectionMode="Single">
+        <ListBox.Styles>
+          <Style Selector="ListBox.rows ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Focusable" Value="False" />
+          </Style>
+          <Style Selector="ListBox.rows ListBoxItem /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="Transparent" />
+          </Style>
+        </ListBox.Styles>
+        <ListBox.ItemsPanel>
+          <ItemsPanelTemplate>
+            <VirtualizingStackPanel />
+          </ItemsPanelTemplate>
+        </ListBox.ItemsPanel>
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Panel>
+              <!-- Grid row -->
+              <ItemsControl ItemsSource="{Binding Items}" IsVisible="{Binding !IsList}" Margin="0,0,0,14">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="14" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Classes="thumbcard" Classes.selected="{Binding IsSelected}" Width="{Binding TileWidth}"
+                            Loaded="OnCardLoaded" PointerPressed="OnCardPressed" DoubleTapped="OnCardDoubleTapped">
+                      <Border.ContextMenu>
+                        <ContextMenu>
+                          <MenuItem Header="{DynamicResource GalOpen}" Command="{Binding Owner.OpenCommand}" CommandParameter="{Binding}" IsVisible="{Binding !IsTrash}">
+                          <MenuItem.Icon><PathIcon Data="{StaticResource IconOpenInNew}" /></MenuItem.Icon>
+                          </MenuItem>
+                          <MenuItem Header="{DynamicResource GalEditVideo}" Command="{Binding Owner.EditVideoCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsVideo}">
+                          <MenuItem.Icon><PathIcon Data="{StaticResource IconVideoEdit}" /></MenuItem.Icon>
+                          </MenuItem>
+                          <MenuItem Header="{DynamicResource EdCopy}" Command="{Binding Owner.CopyCommand}" CommandParameter="{Binding}" IsVisible="{Binding !IsTrash}" InputGesture="Ctrl+C">
+                          <MenuItem.Icon><PathIcon Data="{StaticResource IconCopy}" /></MenuItem.Icon>
+                          </MenuItem>
+                          <MenuItem Header="{DynamicResource GalRename}" Command="{Binding Owner.RenameCommand}" CommandParameter="{Binding}" IsVisible="{Binding !IsTrash}" InputGesture="F2">
+                          <MenuItem.Icon><PathIcon Data="{StaticResource IconRename}" /></MenuItem.Icon>
+                          </MenuItem>
+                          <MenuItem Header="{DynamicResource GalShowInFolder}" Command="{Binding Owner.ShowInFolderCommand}" CommandParameter="{Binding}" IsVisible="{Binding !IsTrash}">
+                          <MenuItem.Icon><PathIcon Data="{StaticResource IconFolderOpen}" /></MenuItem.Icon>
+                          </MenuItem>
+                          <MenuItem Header="{DynamicResource GalRestore}" Command="{Binding Owner.RestoreCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsTrash}">
+                          <MenuItem.Icon><PathIcon Data="{StaticResource IconRestore}" /></MenuItem.Icon>
+                          </MenuItem>
+                          <Separator />
+                          <MenuItem Classes="danger" Header="{DynamicResource GalDelete}" Command="{Binding Owner.DeleteCommand}" CommandParameter="{Binding}" InputGesture="Delete">
+                          <MenuItem.Icon><PathIcon Data="{StaticResource IconDelete}" /></MenuItem.Icon>
+                          </MenuItem>
+                          
+                        </ContextMenu>
+                      </Border.ContextMenu>
+                      <StackPanel>
+                        <Border Classes="thumb" Height="{Binding ThumbHeight}">
+                          <Panel>
+                            <PathIcon Data="{Binding KindIcon}" Width="36" Height="36" Opacity="0.5" IsVisible="{Binding !HasThumbnail}" />
+                            <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" />
+                            <Border IsVisible="{Binding IsVideo}" Width="44" Height="44" CornerRadius="22" Background="#B0000000"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                              <PathIcon Data="{StaticResource IconPlay}" Width="22" Height="22" Foreground="White" />
+                            </Border>
+                            <!-- One row on top: checkbox (hover / while selecting) and type pill left, format pill right – same height, same line -->
+                            <Grid ColumnDefinitions="Auto,Auto,*,Auto" Height="22" Margin="8" VerticalAlignment="Top">
+                              <CheckBox Classes="cardcheck" Classes.show="{Binding ShowCheck}" IsChecked="{Binding IsSelected}" Margin="0,0,6,0" />
+                              <Border Grid.Column="1" Classes="typepill">
+                                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                  <PathIcon Data="{Binding TypeIcon}" Width="12" Height="12" />
+                                  <TextBlock Text="{Binding TypeText}" Classes="small" FontWeight="SemiBold" />
+                                </StackPanel>
+                              </Border>
+                              <Border Grid.Column="3" Classes="formatpill overlay">
+                                <TextBlock Text="{Binding KindText}" Classes="small" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                              </Border>
+                            </Grid>
+                          </Panel>
+                        </Border>
+                        <StackPanel Margin="12,10" Spacing="2">
+                          <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                          <StackPanel Orientation="Horizontal" Spacing="10">
+                            <TextBlock Classes="small muted" Text="{Binding DateText}" />
+                            <TextBlock Classes="small muted" Text="{Binding SizeText}" />
+                          </StackPanel>
+                        </StackPanel>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <!-- List row -->
+              <Border Classes="thumbcard" Classes.selected="{Binding IsSelected}" IsVisible="{Binding $parent[ListBoxItem].DataContext.IsList}" DataContext="{Binding First}"
+                      Margin="0,0,0,6" Padding="8" Loaded="OnCardLoaded" PointerPressed="OnCardPressed"
+                      DoubleTapped="OnCardDoubleTapped">
+                <Border.ContextMenu>
+                  <ContextMenu>
+                    <MenuItem Header="{DynamicResource GalOpen}" Command="{Binding Owner.OpenCommand}" CommandParameter="{Binding}" IsVisible="{Binding !IsTrash}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource IconOpenInNew}" /></MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="{DynamicResource GalEditVideo}" Command="{Binding Owner.EditVideoCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsVideo}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource IconVideoEdit}" /></MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="{DynamicResource EdCopy}" Command="{Binding Owner.CopyCommand}" CommandParameter="{Binding}" IsVisible="{Binding !IsTrash}" InputGesture="Ctrl+C">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource IconCopy}" /></MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="{DynamicResource GalRename}" Command="{Binding Owner.RenameCommand}" CommandParameter="{Binding}" IsVisible="{Binding !IsTrash}" InputGesture="F2">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource IconRename}" /></MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="{DynamicResource GalShowInFolder}" Command="{Binding Owner.ShowInFolderCommand}" CommandParameter="{Binding}" IsVisible="{Binding !IsTrash}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource IconFolderOpen}" /></MenuItem.Icon>
+                    </MenuItem>
+                    <MenuItem Header="{DynamicResource GalRestore}" Command="{Binding Owner.RestoreCommand}" CommandParameter="{Binding}" IsVisible="{Binding IsTrash}">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource IconRestore}" /></MenuItem.Icon>
+                    </MenuItem>
+                    <Separator />
+                    <MenuItem Classes="danger" Header="{DynamicResource GalDelete}" Command="{Binding Owner.DeleteCommand}" CommandParameter="{Binding}" InputGesture="Delete">
+                    <MenuItem.Icon><PathIcon Data="{StaticResource IconDelete}" /></MenuItem.Icon>
+                    </MenuItem>
+                    
+                  </ContextMenu>
+                </Border.ContextMenu>
+                <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto,Auto">
+                  <CheckBox Classes="listcheck" IsChecked="{Binding IsSelected}" VerticalAlignment="Center" Margin="4,0,10,0" />
+                  <Border Grid.Column="1" Classes="thumb" Width="{Binding ListThumbWidth}" Height="{Binding ListThumbHeight}" CornerRadius="6" ClipToBounds="True">
+                    <Panel>
+                      <PathIcon Data="{Binding KindIcon}" Width="20" Height="20" Opacity="0.5" IsVisible="{Binding !HasThumbnail}" />
+                      <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" />
+                    </Panel>
+                  </Border>
+                  <TextBlock Grid.Column="2" Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0" TextTrimming="CharacterEllipsis" />
+                  <Border Grid.Column="3" Classes="typepill" Margin="8,0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                      <PathIcon Data="{Binding TypeIcon}" Width="12" Height="12" />
+                      <TextBlock Text="{Binding TypeText}" Classes="small" FontWeight="SemiBold" />
+                    </StackPanel>
+                  </Border>
+                  <Border Grid.Column="4" Classes="formatpill" Margin="0,0,8,0">
+                    <TextBlock Classes="small" Text="{Binding KindText}" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                  </Border>
+                  <TextBlock Grid.Column="5" Classes="small muted" Text="{Binding DateText}" VerticalAlignment="Center" Width="140" TextAlignment="Right" />
+                  <TextBlock Grid.Column="6" Classes="small muted" Text="{Binding SizeText}" VerticalAlignment="Center" Width="80" TextAlignment="Right" />
+                </Grid>
+              </Border>
+            </Panel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Panel>
+  </DockPanel>
+</UserControl>

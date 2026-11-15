@@ -1,0 +1,137 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctl="using:SnapNova.App.Controls"
+        x:Class="SnapNova.App.Views.MainWindow"
+        Title="{Binding WindowTitle}"
+        Icon="/Assets/snapnova.ico"
+        Background="{DynamicResource BrushBgApp}"
+        MinWidth="760" MinHeight="520"
+        WindowStartupLocation="CenterScreen">
+
+  <Grid ColumnDefinitions="64,*" RowDefinitions="Auto,*">
+
+    <!-- Icon rail: always collapsed, tooltips name the entries -->
+    <Border Grid.RowSpan="2" Background="{DynamicResource BrushBgSidebar}" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="0,0,1,0">
+      <DockPanel>
+        <Path DockPanel.Dock="Top" Classes="logo" Width="32" Height="32" Margin="0,16,0,14" HorizontalAlignment="Center"
+              ToolTip.Tip="SnapNova" />
+
+        <!-- Bottom: settings and about -->
+        <StackPanel DockPanel.Dock="Bottom" Spacing="4" Margin="0,0,0,14">
+          <Border Classes="divider" Margin="14,4,14,6" />
+          <ToggleButton Classes="rail" IsChecked="{Binding IsTrash, Mode=OneWay}" Command="{Binding ShowTrashCommand}" ToolTip.Tip="{DynamicResource NavTrash}">
+            <PathIcon Data="{StaticResource IconTrash}" />
+            <ToggleButton.ContextMenu>
+              <ContextMenu>
+                <MenuItem Header="{DynamicResource TrashOpen}" Command="{Binding ShowTrashCommand}">
+                  <MenuItem.Icon><PathIcon Data="{StaticResource IconTrash}" /></MenuItem.Icon>
+                </MenuItem>
+                <Separator />
+                <MenuItem Classes="danger" Header="{DynamicResource GalEmptyTrash}" Command="{Binding EmptyTrashCommand}">
+                  <MenuItem.Icon><PathIcon Data="{StaticResource IconDeleteSweep}" /></MenuItem.Icon>
+                </MenuItem>
+              </ContextMenu>
+            </ToggleButton.ContextMenu>
+          </ToggleButton>
+          <Border Classes="divider" Margin="14,6" />
+          <ToggleButton Classes="rail" IsChecked="{Binding IsSettings, Mode=OneWay}" Command="{Binding ShowSettingsCommand}" ToolTip.Tip="{DynamicResource NavSettings}">
+            <PathIcon Data="{StaticResource IconCog}" />
+          </ToggleButton>
+          <ToggleButton Classes="rail" IsChecked="{Binding IsAbout, Mode=OneWay}" Command="{Binding ShowAboutCommand}" ToolTip.Tip="{DynamicResource NavAbout}">
+            <PathIcon Data="{StaticResource IconInfo}" />
+          </ToggleButton>
+        </StackPanel>
+
+        <StackPanel Spacing="4">
+          <ToggleButton Classes="rail" IsChecked="{Binding IsGallery, Mode=OneWay}" Command="{Binding ShowGalleryCommand}" ToolTip.Tip="{DynamicResource NavGallery}">
+            <PathIcon Data="{StaticResource IconGallery}" />
+          </ToggleButton>
+          <Border Classes="divider" Margin="14,6" />
+
+          <!-- Captures: neutral, the last used one with a small orange dot -->
+          <Panel>
+            <Button Classes="rail" Command="{Binding CaptureImageCommand}" ToolTip.Tip="{Binding TipRegion}">
+              <PathIcon Data="{StaticResource IconSelection}" />
+            </Button>
+            <Ellipse Classes="lastdot" IsVisible="{Binding LastIsRegion}" />
+          </Panel>
+          <Panel>
+            <Button Classes="rail" Command="{Binding CaptureWindowCommand}" ToolTip.Tip="{Binding TipWindow}">
+              <PathIcon Data="{StaticResource IconWindow}" />
+            </Button>
+            <Ellipse Classes="lastdot" IsVisible="{Binding LastIsWindow}" />
+          </Panel>
+          <Panel>
+            <Button Classes="rail" Command="{Binding CaptureFullScreenCommand}" ToolTip.Tip="{Binding TipFullScreen}">
+              <PathIcon Data="{StaticResource IconMonitor}" />
+            </Button>
+            <Ellipse Classes="lastdot" IsVisible="{Binding LastIsFullScreen}" />
+          </Panel>
+          <Panel>
+            <Button Classes="rail" Command="{Binding CaptureScrollingCommand}" ToolTip.Tip="{Binding TipScrolling}">
+              <PathIcon Data="{StaticResource IconScrollCapture}" />
+            </Button>
+            <Ellipse Classes="lastdot" IsVisible="{Binding LastIsScrolling}" />
+          </Panel>
+          <Panel>
+            <Button Classes="rail" Command="{Binding CaptureDelayedCommand}" ToolTip.Tip="{Binding TipDelayed}">
+              <PathIcon Data="{StaticResource IconTimerCapture}" />
+            </Button>
+            <Ellipse Classes="lastdot" IsVisible="{Binding LastIsDelayed}" />
+          </Panel>
+          <Border Classes="divider" Margin="14,6" />
+          <Panel>
+            <Button Classes="rail" Classes.recording="{Binding IsRecording}" Command="{Binding VideoCommand}" ToolTip.Tip="{Binding TipVideo}">
+              <PathIcon Data="{Binding VideoIcon}" />
+            </Button>
+            <Ellipse Classes="lastdot" IsVisible="{Binding LastIsVideo}" />
+          </Panel>
+          <!-- While recording: start a second recording (own colour, stopped together) -->
+          <Button Classes="rail" IsVisible="{Binding CanSecondRecording}" Command="{Binding SecondRecordingCommand}"
+                  ToolTip.Tip="{DynamicResource RecSecondTip}">
+            <PathIcon Data="{StaticResource IconVideoPlus}" />
+          </Button>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- Header -->
+    <Border Grid.Column="1" Padding="24,14,20,12" BorderBrush="{DynamicResource BrushBorder}" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <PathIcon Data="{Binding CurrentPage.Icon}" Width="22" Height="22" Foreground="{DynamicResource BrushAccentText}" />
+          <TextBlock Classes="h1" Text="{Binding CurrentPage.Title}" VerticalAlignment="Center" />
+        </StackPanel>
+        <!-- Recycle bin page: empty it (red, confirmation follows) -->
+        <Button Grid.Column="1" Classes="dangerlabel" IsVisible="{Binding IsTrash}" Command="{Binding EmptyTrashCommand}" VerticalAlignment="Center">
+          <ctl:IconLabel Icon="{StaticResource IconDeleteSweep}" Text="{DynamicResource GalEmptyTrash}" />
+        </Button>
+        <!-- FFmpeg status: only while it is missing; a click opens the setup for video recording -->
+        <Button Grid.Column="1" Classes="statusbad" IsVisible="{Binding ShowFfmpegPill}" Command="{Binding Gallery.OpenFfmpegSetupCommand}"
+                ToolTip.Tip="{DynamicResource FfPillTip}" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Ellipse Width="8" Height="8" Fill="#FFE53935" VerticalAlignment="Center" />
+            <TextBlock Classes="small" Text="{DynamicResource FfPillMissing}" VerticalAlignment="Center" FontWeight="SemiBold" />
+          </StackPanel>
+        </Button>
+      </Grid>
+    </Border>
+
+    <!-- Content -->
+    <Grid Grid.Row="1" Grid.Column="1">
+      <ContentControl x:Name="PageHost" Content="{Binding CurrentPage}" Margin="24,16,20,16" />
+
+      <!-- Notifications: bottom right, they slide in softly (Settings › Animations) -->
+      <Border x:Name="ToastHost" Classes="toast" Classes.error="{Binding ToastIsError}" IsVisible="{Binding HasToast}"
+              HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="24,0,24,20" MinWidth="240" MaxWidth="480">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <PathIcon Classes="toastIcon" Width="18" Height="18" Margin="0,0,12,0" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1" Text="{Binding Toast}" TextWrapping="Wrap" VerticalAlignment="Center" LineHeight="20" />
+          <Button Grid.Column="2" Classes="icon small" Margin="12,0,0,0" VerticalAlignment="Center" Command="{Binding CloseToastCommand}">
+            <PathIcon Data="{StaticResource IconClose}" />
+          </Button>
+        </Grid>
+      </Border>
+    </Grid>
+  </Grid>
+</Window>

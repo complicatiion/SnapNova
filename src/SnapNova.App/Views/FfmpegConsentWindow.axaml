@@ -1,0 +1,65 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ctl="using:SnapNova.App.Controls"
+        xmlns:vm="using:SnapNova.App.ViewModels"
+        x:Class="SnapNova.App.Views.FfmpegConsentWindow"
+        x:DataType="vm:FfmpegConsentViewModel"
+        Icon="/Assets/snapnova.ico"
+        Title="{DynamicResource FfmpegTitle}"
+        Width="520"
+        SizeToContent="Height"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner">
+  <Border Padding="24">
+    <!-- Everything centered; buttons: secondary left, main action right -->
+    <StackPanel Spacing="14">
+      <PathIcon Data="{StaticResource IconVideo}" Width="34" Height="34" Foreground="{DynamicResource BrushAccentText}" HorizontalAlignment="Center" />
+      <TextBlock Classes="h2" Text="{DynamicResource FfmpegTitle}" HorizontalAlignment="Center" />
+      <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center" Text="{DynamicResource FfmpegIntro}" />
+
+      <!-- Details collapsed by default -->
+      <Expander Classes="details" Header="{DynamicResource FfmpegDetails}">
+        <StackPanel Spacing="8">
+          <ctl:IconLabel Icon="{StaticResource IconScale}" Text="{DynamicResource FfmpegNoticeLicense}" TextWrapping="Wrap" />
+          <ctl:IconLabel Icon="{StaticResource IconGithub}" Text="{DynamicResource FfmpegNoticeSource}" TextWrapping="Wrap" />
+          <TextBlock Classes="mono small muted" Text="{Binding AssetName}" Margin="24,0,0,0" TextWrapping="Wrap" />
+          <ctl:IconLabel Icon="{StaticResource IconShieldCheck}" Text="{DynamicResource FfmpegNoticeVerify}" TextWrapping="Wrap" />
+          <ctl:IconLabel Icon="{StaticResource IconFolder}" Text="{DynamicResource FfmpegNoticeLocation}" TextWrapping="Wrap" />
+          <ctl:IconLabel Icon="{StaticResource IconWifiOff}" Text="{DynamicResource FfmpegNoticeOnce}" TextWrapping="Wrap" />
+          <ctl:IconLabel Icon="{StaticResource IconAlert}" Text="{DynamicResource FfmpegNoticeGpl}" TextWrapping="Wrap" IsVisible="{Binding IsGplVariant}" />
+        </StackPanel>
+      </Expander>
+
+      <!-- Consent: one line, switch right -->
+      <Border Classes="raised" CornerRadius="10" Padding="16,8" IsVisible="{Binding !IsWorking}">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="{DynamicResource FfmpegConsent}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+          <ToggleSwitch Grid.Column="1" IsChecked="{Binding NoticeRead}" OnContent="" OffContent="" MinWidth="0"
+                        VerticalAlignment="Center" Margin="12,0,0,0" />
+        </Grid>
+      </Border>
+
+      <StackPanel Spacing="6" IsVisible="{Binding IsWorking}">
+        <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="100" Height="6" />
+        <TextBlock Classes="muted small" Text="{Binding StatusText}" HorizontalAlignment="Center" />
+      </StackPanel>
+
+      <Border Classes="notice deep" IsVisible="{Binding ErrorText, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <TextBlock Text="{Binding ErrorText}" TextWrapping="Wrap" TextAlignment="Center" />
+      </Border>
+
+      <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" Margin="0,4,0,0">
+        <Button Command="{Binding UseExistingCommand}" IsEnabled="{Binding CanAccept}">
+          <ctl:IconLabel Icon="{StaticResource IconFileSearch}" Text="{DynamicResource FfmpegUseExisting}" />
+        </Button>
+        <Button Command="{Binding CancelCommand}" IsCancel="True">
+          <ctl:IconLabel Icon="{StaticResource IconClose}" Text="{DynamicResource BtnCancel}" />
+        </Button>
+        <Button Classes="primary" Command="{Binding AcceptAndDownloadCommand}" IsEnabled="{Binding CanAccept}" IsDefault="True">
+          <ctl:IconLabel Icon="{StaticResource IconDownload}" Text="{DynamicResource FfmpegAccept}" />
+        </Button>
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</Window>
