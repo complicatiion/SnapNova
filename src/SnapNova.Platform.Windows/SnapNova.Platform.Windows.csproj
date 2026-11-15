@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Windows 10 2004+: WinRT projection for Windows.Media.Ocr (text recognition, Smart Redact) -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <RootNamespace>SnapNova.Platform.Windows</RootNamespace>
+    <AssemblyName>SnapNova.Platform.Windows</AssemblyName>
+    <!-- DXGI output enumeration uses COM vtable calls (function pointers) -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SnapNova.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NAudio.Wasapi" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SnapNova.Core\SnapNova.Core.csproj" />
+  </ItemGroup>
+
+</Project>
