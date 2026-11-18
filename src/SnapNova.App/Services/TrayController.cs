@@ -148,9 +148,16 @@ public sealed class TrayController : IDisposable
                 _capture.Recording == RecordingState.Paused ? "IconPlay" : "IconPause", _capture.TogglePause));
             if (_capture.CanAddRecording)
             {
-                menu.Add(Item(Loc.T("TraySecondRecording"), "IconVideoPlus", () => _ = _capture.StartSecondaryAsync()));
+                menu.Add(Item(Loc.F("TrayMoreRecording", _capture.RecordingCount + 1, _capture.MaxRecordingCount), "IconVideoPlus",
+                    () => _ = _capture.StartSecondaryAsync()));
             }
 
+            if (_actions.SaveTemplate is { } save && _actions.CanSaveTemplate?.Invoke() == true)
+            {
+                menu.Add(Item(Loc.T("TraySaveTemplate"), "IconTemplate", save));
+            }
+
+            menu.Add(Item(Loc.T("TrayToggleToolbar"), "IconDragGrip", _capture.ToggleToolbar));
             menu.Add(new NativeMenuItemSeparator());
         }
         else
@@ -164,6 +171,17 @@ public sealed class TrayController : IDisposable
             menu.Add(new NativeMenuItemSeparator());
             menu.Add(Capture("TrayVideoRegion", "IconVideo", CaptureMode.VideoRegion, AccentColor));
             menu.Add(Capture("TrayVideoFullScreen", "IconVideoMonitor", CaptureMode.VideoFullScreen));
+            if (_actions.StartTemplate is { } start && _settings.Templates.Count > 0)
+            {
+                var templates = new NativeMenu();
+                foreach (var template in _settings.Templates)
+                {
+                    templates.Add(Item($"{template.Name}  ({template.Areas.Count})", "IconTemplate", () => start(template)));
+                }
+
+                menu.Add(Submenu(Loc.T("TrayTemplates"), "IconTemplate", templates));
+            }
+
             menu.Add(new NativeMenuItemSeparator());
         }
 
@@ -252,4 +270,7 @@ public sealed record TrayActions(
     Action ShowAbout,
     Action OpenCaptureFolder,
     Action<string> SetLanguage,
-    Action Exit);
+    Action Exit,
+    Action? SaveTemplate = null,
+    Action<RecordingTemplate>? StartTemplate = null,
+    Func<bool>? CanSaveTemplate = null);

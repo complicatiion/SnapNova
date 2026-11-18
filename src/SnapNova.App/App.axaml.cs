@@ -108,6 +108,9 @@ public partial class App : Application
             }
         });
         host.PlayVideo = path => _ = PlayVideoAsync(path);
+        host.ResetApp = ResetAndRestartAsync;
+        host.StartTemplate = template => _ = _capture.StartTemplateAsync(template);
+        host.IsRecording = () => _capture?.Recording is RecordingState.Recording or RecordingState.Paused or RecordingState.Starting;
         host.OpenFfmpegSettings = () =>
         {
             ShowMain(settingsPage);
@@ -138,10 +141,16 @@ public partial class App : Application
                 Loc.Apply(_settings.Language ?? Loc.Detect());
                 _settings.Save();
             },
-            Exit: () => _ = ExitAsync()));
+            Exit: () => _ = ExitAsync(),
+            SaveTemplate: SaveRunningAsTemplate,
+            StartTemplate: template => _ = _capture.StartTemplateAsync(template),
+            CanSaveTemplate: () => _capture.CanSaveTemplate));
 
         _ = _hotkeys.ApplyAsync();
         _ = _updates.CheckOnStartAsync();
+
+        // Parts of a recording that never finished (crash, power loss): offer to rescue them.
+        _ = RecordingRecovery.CheckAsync(_settings, _gate!, host, gallery.OnSaved);
         Program.Forwarded += request => Dispatcher.UIThread.Post(() => Handle(request));
         Handle(Program.Initial);
 
@@ -289,6 +298,66 @@ public partial class App : Application
         window.Closed += (_, _) => _videoEditors.Remove(path);
         window.Show();
         window.Activate();
+    }
+
+    /// <summary>Tray: running recordings → template (named automatically, rename in Settings › Second recording).</summary>
+    private void SaveRunningAsTemplate()
+    {
+        if (_capture is null || _settings is null)
+        {
+            return;
+        }
+
+        var number = 1;
+        while (_settings.Templates.Any(t => t.Name == Loc.F("TemplateDefaultName", number)))
+        {
+            number++;
+        }
+
+        var name = Loc.F("TemplateDefaultName", number);
+        if (_capture.SaveTemplate(name))
+        {
+            _tray?.Notice(Loc.F("TemplateSaved", name));
+        }
+    }
+
+    /// <summary>
+    /// Settings › Reset: windows close (editors save), then settings, caches and – if chosen – captures and FFmpeg are
+    /// removed, a new SnapNova starts (it waits for this one) and this one ends without saving the settings again.
+    /// </summary>
+    private async Task ResetAndRestartAsync(Views.ResetChoice choice)
+    {
+        if (_exiting || _settings is null)
+        {
+            return;
+        }
+
+        _exiting = true;
+        foreach (var editor in _editors.Values.ToList())
+        {
+            editor.Close();
+        }
+
+        foreach (var video in _videoEditors.Values.ToList())
+        {
+            video.Close();
+        }
+
+        if (_main is not null)
+        {
+            _main.AllowClose = true;
+            _main.Close();
+        }
+
+        _tray?.Dispose();
+        _hotkeys?.Dispose();
+        _capture?.Dispose();
+        _http?.Dispose();
+
+        var settings = _settings;
+        await Task.Run(() => AppReset.Run(settings, choice.DeleteMedia, choice.RemoveFfmpeg));
+        AppReset.Restart();
+        _desktop?.Shutdown();
     }
 
     private async Task ExitAsync()

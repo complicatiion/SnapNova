@@ -19,7 +19,7 @@ public sealed class RecordingStartException(string message, string log) : Except
 /// Sync: audio is written only while a segment is really running – from FFmpeg's "Press [q]" line (output opened, first
 /// frames follow) until the pause/stop request.
 /// </summary>
-public sealed class VideoRecorder : IAsyncDisposable
+public sealed partial class VideoRecorder : IAsyncDisposable
 {
     private static readonly TimeSpan StartTimeout = TimeSpan.FromSeconds(10);
     private static readonly TimeSpan StopTimeout = TimeSpan.FromSeconds(15);
@@ -59,6 +59,17 @@ public sealed class VideoRecorder : IAsyncDisposable
     public event Action<string>? Failed;
 
     public TimeSpan Elapsed => _elapsed.Elapsed;
+
+    private int _droppedBase;
+    private int _segmentDrops;
+
+    /// <summary>Frames FFmpeg had to drop so far (PC too slow for size/fps/encoder) – shown as a warning.</summary>
+    public int DroppedFrames { get; private set; }
+
+    public event Action<int>? DroppedFramesChanged;
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"drop=\s*(\d+)")]
+    private static partial System.Text.RegularExpressions.Regex DropRegex();
 
     public bool IsPaused { get; private set; }
 
@@ -185,6 +196,8 @@ public sealed class VideoRecorder : IAsyncDisposable
     {
         _stopRequested = false;
         var file = Path.Combine(_workDir, $"segment{_segments.Count + 1:00}.mkv");
+        _droppedBase += _segmentDrops;
+        _segmentDrops = 0;
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var info = new ProcessStartInfo(_ffmpeg)
         {
@@ -205,6 +218,20 @@ public sealed class VideoRecorder : IAsyncDisposable
         {
             if (e.Data is null)
             {
+                return;
+            }
+
+            // Progress lines (every 2 s): only the dropped-frame counter matters, they do not go into the log.
+            if (e.Data.StartsWith("frame=", StringComparison.Ordinal))
+            {
+                var drop = DropRegex().Match(e.Data);
+                if (drop.Success && int.TryParse(drop.Groups[1].Value, out var dropped) && _droppedBase + dropped != DroppedFrames)
+                {
+                    _segmentDrops = dropped;
+                    DroppedFrames = _droppedBase + dropped;
+                    DroppedFramesChanged?.Invoke(DroppedFrames);
+                }
+
                 return;
             }
 

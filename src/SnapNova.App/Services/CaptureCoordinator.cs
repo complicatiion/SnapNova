@@ -36,8 +36,12 @@ public sealed class CaptureCoordinator(UiSettings settings, FfmpegGate ffmpeg, A
     private readonly List<SecondaryRecording> _secondary = [];
 
     /// <summary>An additional recording next to the first one: own frame colour, own file, stopped together.</summary>
-    private sealed class SecondaryRecording(int number, Color color, VideoRecorder recorder, RecordingChrome chrome, string output)
+    private sealed class SecondaryRecording(int number, Color color, VideoRecorder recorder, RecordingChrome chrome, string output,
+        string device, ScreenRect area, SecondaryAudio audio)
     {
+        public string Device { get; } = device;
+        public ScreenRect Area { get; } = area;
+        public SecondaryAudio Audio { get; } = audio;
         public int Number { get; } = number;
         public Color Color { get; } = color;
         public VideoRecorder Recorder { get; } = recorder;
@@ -281,23 +285,12 @@ public sealed class CaptureCoordinator(UiSettings settings, FfmpegGate ffmpeg, A
 
     private async Task RecordAsync(CaptureMode mode)
     {
-        var exe = await ffmpeg.EnsureAsync(host.VisibleOwner());
-        if (exe is null)
+        if (await PrepareVideoAsync() is not { } prepared)
         {
             return;
         }
 
-        var encoder = await ResolveEncoderAsync(exe);
-        if (encoder is null)
-        {
-            host.ShowError(Loc.T("ErrVideoTitle"), Loc.T("ErrNoEncoder"));
-            return;
-        }
-
-        if (settings.VideoFormat == VideoFormat.Mp4Hevc)
-        {
-            encoder = RecordingArguments.ToHevc(encoder);
-        }
+        var (exe, encoder) = prepared;
 
         await Task.Delay(120);
         var frozen = await Task.Run(() => ScreenCapture.Freeze(includeCursor: false));
@@ -319,22 +312,96 @@ public sealed class CaptureCoordinator(UiSettings settings, FfmpegGate ffmpeg, A
         }
 
         var area = selection.Area.EvenSize();
-        var screenArea = area.Offset(selection.Monitor.Bounds.X, selection.Monitor.Bounds.Y);
+        if (!await PreflightAsync(area.Offset(selection.Monitor.Bounds.X, selection.Monitor.Bounds.Y)))
+        {
+            return;
+        }
+
+        await StartPrimaryAsync(exe, encoder, selection.Monitor.DeviceName, selection.Monitor.Bounds, area);
+    }
+
+    /// <summary>ffmpeg.exe and the encoder (HEVC variant when MP4 · HEVC is chosen); null = not possible.</summary>
+    private async Task<(string Exe, string Encoder)?> PrepareVideoAsync()
+    {
+        var exe = await ffmpeg.EnsureAsync(host.VisibleOwner());
+        if (exe is null)
+        {
+            return null;
+        }
+
+        var encoder = await ResolveEncoderAsync(exe);
+        if (encoder is null)
+        {
+            host.ShowError(Loc.T("ErrVideoTitle"), Loc.T("ErrNoEncoder"));
+            return null;
+        }
+
+        return (exe, settings.VideoFormat == VideoFormat.Mp4Hevc ? RecordingArguments.ToHevc(encoder) : encoder);
+    }
+
+    /// <summary>Before a video: enough free space? Then the 3-2-1 countdown (setting). False = do not start.</summary>
+    private async Task<bool> PreflightAsync(ScreenRect screenArea)
+    {
+        var free = FreeSpace(settings.EffectiveVideoFolder);
+        if (free is { } bytes && bytes < LowSpaceBytes
+            && !await host.Ask(Loc.T("DiskLowTitle"), Loc.F("DiskLowText", FormatGb(bytes)), Loc.T("DiskLowStart")))
+        {
+            return false;
+        }
+
+        if (settings.VideoCountdown)
+        {
+            var center = new Avalonia.PixelPoint(screenArea.X + screenArea.Width / 2, screenArea.Y + screenArea.Height / 2);
+            return await CountdownWindow.RunAsync(3, center);
+        }
+
+        return true;
+    }
+
+    private const long LowSpaceBytes = 2L * 1024 * 1024 * 1024;
+    private const long CriticalSpaceBytes = 400L * 1024 * 1024;
+
+    private static long? FreeSpace(string folder)
+    {
+        try
+        {
+            var root = Path.GetPathRoot(Path.GetFullPath(folder));
+            return string.IsNullOrEmpty(root) || root.StartsWith(@"\\", StringComparison.Ordinal) ? null : new DriveInfo(root).AvailableFreeSpace;
+        }
+        catch (Exception e) when (e is IOException or ArgumentException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    private static string FormatGb(long bytes) => (bytes / 1024.0 / 1024 / 1024).ToString("0.0", System.Globalization.CultureInfo.CurrentCulture) + " GB";
+
+    private string? _primaryDevice;
+    private ScreenRect _primaryArea;
+    private DispatcherTimer? _diskTimer;
+    private DispatcherTimer? _toolbarSave;
+
+    /// <summary>The main recording (frame, toolbar, cursor effects). Used by the region/full-screen capture and by templates.</summary>
+    private async Task<bool> StartPrimaryAsync(string exe, string encoder, string device, ScreenRect monitorBounds, ScreenRect area)
+    {
+        var screenArea = area.Offset(monitorBounds.X, monitorBounds.Y);
         var folder = settings.EffectiveVideoFolder;
         Directory.CreateDirectory(folder);
         var output = CaptureLibrary.NewFileName(folder, settings.VideoFormat == VideoFormat.Mkv ? ".mkv" : ".mp4", DateTime.Now);
 
         // ddagrab (GPU) when the monitor is on the default adapter, else gdigrab. If ddagrab fails, retry once with gdigrab.
-        var outputIndex = DxgiOutputs.OutputIndexOf(selection.Monitor.DeviceName);
+        var outputIndex = DxgiOutputs.OutputIndexOf(device);
         VideoSource source = outputIndex is { } idx
             ? new DdagrabSource(idx, area.X, area.Y)
             : new GdigrabSource(screenArea.X, screenArea.Y);
 
         Recording = RecordingState.Starting;
         StateChanged?.Invoke();
-        _chrome = new RecordingChrome(screenArea, selection.Monitor.Bounds, () => _recorder?.Elapsed ?? TimeSpan.Zero,
+        var saved = settings.ToolbarX is { } tx && settings.ToolbarY is { } ty ? new Avalonia.PixelPoint(tx, ty) : (Avalonia.PixelPoint?)null;
+        _chrome = new RecordingChrome(screenArea, monitorBounds, () => _recorder?.Elapsed ?? TimeSpan.Zero,
             TogglePause, () => _ = StopRecordingAsync(), () => _ = CancelRecordingAsync(),
-            settings.ShowRecordingFrame, settings.ShowRecordingToolbar, RecordingChrome.SessionColors[0], () => _ = StartSecondaryAsync());
+            settings.ShowRecordingFrame, settings.ShowRecordingToolbar, RecordingChrome.SessionColors[0], () => _ = StartSecondaryAsync(),
+            saved, SaveToolbarPosition);
         _chrome.Show();
         if (settings.CursorHighlight || settings.ClickEffects)
         {
@@ -364,25 +431,74 @@ public sealed class CaptureCoordinator(UiSettings settings, FfmpegGate ffmpeg, A
             host.ShowError(Loc.T("ErrVideoTitle"), Loc.T("ErrRecordingStart") + "\n\n" + Tail(e.Log));
             settings.DetectedEncoder = null; // test again next time
             settings.Save();
-            return;
+            return false;
         }
 
         _pendingOutput = output;
+        _primaryDevice = device;
+        _primaryArea = area;
         _recorder.Failed += log => Dispatcher.UIThread.Post(() => _ = FailAsync(log));
+        _recorder.DroppedFramesChanged += _ => Dispatcher.UIThread.Post(UpdateDropped);
         Recording = RecordingState.Recording;
         StateChanged?.Invoke();
+        StartDiskWatch();
 
         if (_recorder.AudioWarnings.Count > 0)
         {
             host.ShowToast(Loc.T("WarnAudio") + " " + string.Join("; ", _recorder.AudioWarnings));
         }
+
+        return true;
+    }
+
+    /// <summary>Dropped frames of all running recordings → warning sign in the toolbar.</summary>
+    private void UpdateDropped() =>
+        _chrome?.SetDropped((_recorder?.DroppedFrames ?? 0) + _secondary.Sum(s => s.Recorder.DroppedFrames));
+
+    /// <summary>Toolbar dragged: remembered (saved after the mouse rests); null = back to automatic.</summary>
+    private void SaveToolbarPosition(Avalonia.PixelPoint? position)
+    {
+        settings.ToolbarX = position?.X;
+        settings.ToolbarY = position?.Y;
+        _toolbarSave ??= new DispatcherTimer(TimeSpan.FromMilliseconds(600), DispatcherPriority.Background, (_, _) =>
+        {
+            _toolbarSave!.Stop();
+            settings.Save();
+        });
+        _toolbarSave.Stop();
+        _toolbarSave.Start();
+    }
+
+    /// <summary>Hotkey: show or hide the toolbar of the running recording.</summary>
+    public void ToggleToolbar() => _chrome?.ToggleToolbar();
+
+    /// <summary>While recording: almost no space left → stop and save everything before the drive is full.</summary>
+    private void StartDiskWatch()
+    {
+        _diskTimer?.Stop();
+        _diskTimer = new DispatcherTimer(TimeSpan.FromSeconds(15), DispatcherPriority.Background, (_, _) =>
+        {
+            if (Recording is not (RecordingState.Recording or RecordingState.Paused))
+            {
+                _diskTimer?.Stop();
+                return;
+            }
+
+            if (FreeSpace(settings.EffectiveVideoFolder) is { } free && free < CriticalSpaceBytes)
+            {
+                _diskTimer?.Stop();
+                host.ShowToast(Loc.T("DiskFullStopped"));
+                _ = StopRecordingAsync();
+            }
+        });
+        _diskTimer.Start();
     }
 
     private async Task<VideoRecorder> StartRecorderAsync(string exe, string encoder, VideoSource source, ScreenRect area, ScreenRect screenArea,
         bool systemSound, bool microphone, int processId = 0)
     {
         var options = new RecordingOptions(source, area.Width, area.Height, settings.VideoFps, encoder, settings.VideoQuality,
-            settings.VideoShowCursor, "");
+            settings.VideoShowCursor, "", settings.VideoProfile, settings.Chroma444, settings.VideoOutputHeight);
         var work = Path.Combine(AppEnvironment.TempDirectory, "rec-" + DateTime.Now.ToString("yyyyMMddHHmmssfff"));
         var recorder = new VideoRecorder(exe, options, work, systemSound, microphone, screenArea, processId);
         try
@@ -403,6 +519,14 @@ public sealed class CaptureCoordinator(UiSettings settings, FfmpegGate ffmpeg, A
         if (!string.Equals(settings.VideoEncoder, "auto", StringComparison.OrdinalIgnoreCase))
         {
             return settings.VideoEncoder;
+        }
+
+        // 0.0.8 tests Media Foundation last: an older detection is repeated once.
+        if (settings.EncoderOrderVersion < 2)
+        {
+            settings.EncoderOrderVersion = 2;
+            settings.DetectedEncoder = null;
+            settings.Save();
         }
 
         if (!string.IsNullOrEmpty(settings.DetectedEncoder))
@@ -533,6 +657,8 @@ public sealed class CaptureCoordinator(UiSettings settings, FfmpegGate ffmpeg, A
 
     private async Task EndRecordingAsync()
     {
+        _diskTimer?.Stop();
+        _primaryDevice = null;
         CloseChrome();
         if (_recorder is not null)
         {
@@ -559,7 +685,7 @@ public sealed class CaptureCoordinator(UiSettings settings, FfmpegGate ffmpeg, A
         }
 
         _addingSecondary = true;
-        _chrome?.SetCanAdd(false);
+        _chrome?.SetCanAdd(false, RecordingCount, MaxRecordings);
         StateChanged?.Invoke();
         try
         {
@@ -581,69 +707,224 @@ public sealed class CaptureCoordinator(UiSettings settings, FfmpegGate ffmpeg, A
                 return;
             }
 
-            var number = Enumerable.Range(2, MaxRecordings - 1).First(n => _secondary.All(s => s.Number != n));
-            var color = RecordingChrome.SessionColors[number - 1];
             var area = selection.Area.EvenSize();
             var screenArea = area.Offset(selection.Monitor.Bounds.X, selection.Monitor.Bounds.Y);
-            var folder = settings.EffectiveVideoFolder;
-            Directory.CreateDirectory(folder);
-            var output = CaptureLibrary.NewFileName(folder, settings.VideoFormat == VideoFormat.Mkv ? ".mkv" : ".mp4", DateTime.Now);
-            output = Path.Combine(Path.GetDirectoryName(output)!, Path.GetFileNameWithoutExtension(output) + "_" + number + Path.GetExtension(output));
 
-            // Sound: the program in the area (process loopback), the whole system sound, or none.
-            var processId = settings.SecondaryAudio == SecondaryAudio.Application ? ProcessIn(selection, screenArea) : 0;
-            var systemSound = settings.SecondaryAudio == SecondaryAudio.System;
-
-            var chrome = new RecordingChrome(screenArea, selection.Monitor.Bounds, () => TimeSpan.Zero, () => { }, () => { }, () => { },
-                settings.ShowRecordingFrame, showToolbar: false, color);
-            chrome.Show();
-
-            var outputIndex = DxgiOutputs.OutputIndexOf(selection.Monitor.DeviceName);
-            VideoSource source = outputIndex is { } idx ? new DdagrabSource(idx, area.X, area.Y) : new GdigrabSource(screenArea.X, screenArea.Y);
-            VideoRecorder? recorder = null;
-            try
+            // Sound of this recording: asked right here (default from the settings), or the setting directly.
+            var audio = settings.SecondaryAudio;
+            if (settings.AskSecondaryAudio)
             {
-                try
+                var program = ProgramIn(selection.Window?.Handle ?? 0, screenArea);
+                if (await AudioChoiceWindow.AskAsync(audio, program?.Name, screenArea) is not { } chosen)
                 {
-                    recorder = await StartRecorderAsync(exe, encoder, source, area, screenArea, systemSound, settings.SecondaryMicrophone, processId);
-                }
-                catch (RecordingStartException) when (source is DdagrabSource)
-                {
-                    recorder = null;
+                    return;
                 }
 
-                recorder ??= await StartRecorderAsync(exe, encoder, new GdigrabSource(screenArea.X, screenArea.Y), area, screenArea,
-                    systemSound, settings.SecondaryMicrophone, processId);
-            }
-            catch (RecordingStartException e)
-            {
-                chrome.Close();
-                host.ShowError(Loc.T("ErrVideoTitle"), Loc.T("ErrRecordingStart") + "\n\n" + Tail(e.Log));
-                return;
+                audio = chosen;
             }
 
-            // Running recordings are paused: the new one starts paused too.
-            if (Recording == RecordingState.Paused)
-            {
-                await recorder.PauseAsync();
-                chrome.SetPaused(true);
-            }
-
-            var session = new SecondaryRecording(number, color, recorder, chrome, output);
-            _secondary.Add(session);
-            recorder.Failed += log => Dispatcher.UIThread.Post(() => _ = StopSecondaryAsync(session, log));
-            _chrome?.AddSession(number, color, () => _ = StopSecondaryAsync(session, null));
-            if (recorder.AudioWarnings.Count > 0)
-            {
-                host.ShowToast(Loc.T("WarnAudio") + " " + string.Join("; ", recorder.AudioWarnings));
-            }
+            await StartSecondaryCoreAsync(exe, encoder, selection.Monitor.DeviceName, selection.Monitor.Bounds, area, audio,
+                selection.Window?.Handle ?? 0);
         }
         finally
         {
             _addingSecondary = false;
-            _chrome?.SetCanAdd(CanAddRecording);
+            _chrome?.SetCanAdd(CanAddRecording, RecordingCount, MaxRecordings);
             StateChanged?.Invoke();
         }
+    }
+
+    /// <summary>Running recordings (main + further ones).</summary>
+    public int RecordingCount => (_recorder is null ? 0 : 1) + _secondary.Count;
+
+    public int MaxRecordingCount => MaxRecordings;
+
+    /// <summary>Starts one further recording on a known area (selection, template). False if it could not start.</summary>
+    private async Task<bool> StartSecondaryCoreAsync(string exe, string encoder, string device, ScreenRect monitorBounds, ScreenRect area,
+        SecondaryAudio audio, nint window = 0)
+    {
+        if (_secondary.Count >= MaxRecordings - 1)
+        {
+            return false;
+        }
+
+        var number = Enumerable.Range(2, MaxRecordings - 1).First(n => _secondary.All(s => s.Number != n));
+        var color = RecordingChrome.SessionColors[number - 1];
+        var screenArea = area.Offset(monitorBounds.X, monitorBounds.Y);
+        var folder = settings.EffectiveVideoFolder;
+        Directory.CreateDirectory(folder);
+        var output = CaptureLibrary.PartFileName(folder, settings.VideoFormat == VideoFormat.Mkv ? ".mkv" : ".mp4", _pendingOutput, number);
+
+        // Sound: the program in the area (process loopback), the whole system sound, or none.
+        var processId = audio == SecondaryAudio.Application ? ProgramIn(window, screenArea)?.ProcessId ?? 0 : 0;
+        var systemSound = audio == SecondaryAudio.System;
+
+        var chrome = new RecordingChrome(screenArea, monitorBounds, () => TimeSpan.Zero, () => { }, () => { }, () => { },
+            settings.ShowRecordingFrame, showToolbar: false, color);
+        chrome.Show();
+
+        var outputIndex = DxgiOutputs.OutputIndexOf(device);
+        VideoSource source = outputIndex is { } idx ? new DdagrabSource(idx, area.X, area.Y) : new GdigrabSource(screenArea.X, screenArea.Y);
+        VideoRecorder? recorder = null;
+        try
+        {
+            try
+            {
+                recorder = await StartRecorderAsync(exe, encoder, source, area, screenArea, systemSound, settings.SecondaryMicrophone, processId);
+            }
+            catch (RecordingStartException) when (source is DdagrabSource)
+            {
+                recorder = null;
+            }
+
+            recorder ??= await StartRecorderAsync(exe, encoder, new GdigrabSource(screenArea.X, screenArea.Y), area, screenArea,
+                systemSound, settings.SecondaryMicrophone, processId);
+        }
+        catch (RecordingStartException e)
+        {
+            chrome.Close();
+            host.ShowError(Loc.T("ErrVideoTitle"), Loc.T("ErrRecordingStart") + "\n\n" + Tail(e.Log));
+            return false;
+        }
+
+        // Running recordings are paused: the new one starts paused too.
+        if (Recording == RecordingState.Paused)
+        {
+            await recorder.PauseAsync();
+            chrome.SetPaused(true);
+        }
+
+        var session = new SecondaryRecording(number, color, recorder, chrome, output, device, area, audio);
+        _secondary.Add(session);
+        recorder.Failed += log => Dispatcher.UIThread.Post(() => _ = StopSecondaryAsync(session, log));
+        recorder.DroppedFramesChanged += _ => Dispatcher.UIThread.Post(UpdateDropped);
+        _chrome?.AddSession(number, color, () => _ = StopSecondaryAsync(session, null));
+        if (recorder.AudioWarnings.Count > 0)
+        {
+            host.ShowToast(Loc.T("WarnAudio") + " " + string.Join("; ", recorder.AudioWarnings));
+        }
+
+        return true;
+    }
+
+    // ================================================================ templates (multi-recordings)
+
+    /// <summary>Saves the running recordings (main + further ones) as a template; false when fewer than two run.</summary>
+    public bool SaveTemplate(string name)
+    {
+        if (_primaryDevice is null || _secondary.Count == 0)
+        {
+            return false;
+        }
+
+        var template = new RecordingTemplate { Name = name };
+        template.Areas.Add(new TemplateArea
+        {
+            Monitor = _primaryDevice, X = _primaryArea.X, Y = _primaryArea.Y, Width = _primaryArea.Width, Height = _primaryArea.Height
+        });
+        foreach (var s in _secondary.OrderBy(s => s.Number))
+        {
+            template.Areas.Add(new TemplateArea
+            {
+                Monitor = s.Device, X = s.Area.X, Y = s.Area.Y, Width = s.Area.Width, Height = s.Area.Height, Audio = s.Audio
+            });
+        }
+
+        settings.Templates.RemoveAll(t => string.Equals(t.Name, name, StringComparison.CurrentCultureIgnoreCase));
+        settings.Templates.Add(template);
+        settings.Save();
+        return true;
+    }
+
+    public bool CanSaveTemplate => _primaryDevice is not null && _secondary.Count > 0;
+
+    /// <summary>
+    /// Starts all areas of a template without selection: main recording first, then the further ones in parallel (a fraction of a
+    /// second apart). Areas on monitors that are no longer connected are skipped with a notice.
+    /// </summary>
+    public async Task StartTemplateAsync(RecordingTemplate template)
+    {
+        if (_busy || Recording != RecordingState.Idle || template.Areas.Count == 0 || !OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        SetBusy(true);
+        try
+        {
+            if (await PrepareVideoAsync() is not { } prepared)
+            {
+                return;
+            }
+
+            var (exe, encoder) = prepared;
+            var monitors = ScreenCapture.Monitors();
+            var resolved = template.Areas
+                .Select(a => (Area: a, Monitor: monitors.FirstOrDefault(m => m.DeviceName == a.Monitor)))
+                .ToList();
+            if (resolved.Any(r => r.Monitor is null))
+            {
+                host.ShowToast(Loc.T("TemplateMonitorMissing"));
+            }
+
+            var usable = resolved.Where(r => r.Monitor is not null).ToList();
+            if (usable.Count == 0)
+            {
+                return;
+            }
+
+            ScreenRect Clamp(TemplateArea a, ScreenRect bounds) => new ScreenRect(
+                Math.Clamp(a.X, 0, bounds.Width - 16), Math.Clamp(a.Y, 0, bounds.Height - 16),
+                Math.Min(a.Width, bounds.Width - Math.Clamp(a.X, 0, bounds.Width - 16)),
+                Math.Min(a.Height, bounds.Height - Math.Clamp(a.Y, 0, bounds.Height - 16))).EvenSize();
+
+            var first = usable[0];
+            var firstArea = Clamp(first.Area, first.Monitor!.Bounds);
+            if (!await PreflightAsync(firstArea.Offset(first.Monitor.Bounds.X, first.Monitor.Bounds.Y)))
+            {
+                return;
+            }
+
+            if (!await StartPrimaryAsync(exe, encoder, first.Monitor.DeviceName, first.Monitor.Bounds, firstArea))
+            {
+                return;
+            }
+
+            _chrome?.SetCanAdd(false, RecordingCount, MaxRecordings);
+            await Task.WhenAll(usable.Skip(1).Take(MaxRecordings - 1).Select(r =>
+                StartSecondaryCoreAsync(exe, encoder, r.Monitor!.DeviceName, r.Monitor.Bounds, Clamp(r.Area, r.Monitor.Bounds), r.Area.Audio)));
+            _chrome?.SetCanAdd(CanAddRecording, RecordingCount, MaxRecordings);
+            StateChanged?.Invoke();
+        }
+        finally
+        {
+            // During a recording the coordinator stays busy (as with StartAsync).
+            if (Recording == RecordingState.Idle)
+            {
+                SetBusy(false);
+            }
+        }
+    }
+
+    /// <summary>Program (name, process) of the selected window, else of the topmost window at the centre of the area.</summary>
+    private static (string Name, int ProcessId)? ProgramIn(nint window, ScreenRect screenArea)
+    {
+        var windows = WindowList.Snapshot();
+        var info = window != 0 ? windows.FirstOrDefault(w => w.Handle == window) : null;
+        if (info is null)
+        {
+            var cx = screenArea.X + screenArea.Width / 2;
+            var cy = screenArea.Y + screenArea.Height / 2;
+            info = windows.FirstOrDefault(w => w.Bounds.Contains(cx, cy));
+        }
+
+        if (info is null)
+        {
+            return null;
+        }
+
+        var pid = WindowList.ProcessIdOf(info.Handle);
+        return pid == 0 || pid == Environment.ProcessId ? null : (info.ProcessName, pid);
     }
 
     /// <summary>The small stop button of one additional recording (or its FFmpeg ended unexpectedly).</summary>
@@ -660,7 +941,7 @@ public sealed class CaptureCoordinator(UiSettings settings, FfmpegGate ffmpeg, A
         }
 
         await StopSecondaryCoreAsync(session);
-        _chrome?.SetCanAdd(CanAddRecording);
+        _chrome?.SetCanAdd(CanAddRecording, RecordingCount, MaxRecordings);
         StateChanged?.Invoke();
     }
 
@@ -682,26 +963,6 @@ public sealed class CaptureCoordinator(UiSettings settings, FfmpegGate ffmpeg, A
         {
             await session.Recorder.DisposeAsync();
         }
-    }
-
-    /// <summary>Process of the window in the selected area (selected window, else the topmost window at the centre).</summary>
-    private static int ProcessIn(SelectionResult selection, ScreenRect screenArea)
-    {
-        var hwnd = selection.Window?.Handle ?? 0;
-        if (hwnd == 0)
-        {
-            var cx = screenArea.X + screenArea.Width / 2;
-            var cy = screenArea.Y + screenArea.Height / 2;
-            hwnd = WindowList.Snapshot().FirstOrDefault(w => w.Bounds.Contains(cx, cy))?.Handle ?? 0;
-        }
-
-        if (hwnd == 0)
-        {
-            return 0;
-        }
-
-        var pid = WindowList.ProcessIdOf(hwnd);
-        return pid == Environment.ProcessId ? 0 : pid;
     }
 
     private void CloseChrome()

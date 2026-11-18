@@ -17,6 +17,28 @@ public sealed record Choice<T>(T Value, string Text)
     public override string ToString() => Text;
 }
 
+/// <summary>A saved multi-recording in the settings: the name can be edited in place.</summary>
+public sealed partial class TemplateItem(RecordingTemplate template, Action save) : ObservableObject
+{
+    public RecordingTemplate Template { get; } = template;
+
+    public string Name
+    {
+        get => Template.Name;
+        set
+        {
+            if (value != Template.Name && value.Trim().Length > 0)
+            {
+                Template.Name = value.Trim();
+                OnPropertyChanged();
+                save();
+            }
+        }
+    }
+
+    public string AreasText => Loc.F("TemplateAreas", Template.Areas.Count);
+}
+
 /// <summary>Settings page. Every change is saved at once (no Apply button).</summary>
 public sealed partial class SettingsViewModel : PageViewModel
 {
@@ -120,6 +142,18 @@ public sealed partial class SettingsViewModel : PageViewModel
         new(CaptureMode.VideoRegion, Loc.T("PickVideo"))
     ];
 
+    public IReadOnlyList<Choice<VideoProfile>> Profiles { get; } =
+        [new(VideoProfile.Screen, Loc.T("ProfileScreen")), new(VideoProfile.Motion, Loc.T("ProfileMotion"))];
+
+    public IReadOnlyList<Choice<int>> OutputHeights { get; } =
+        [new(0, Loc.T("OutputNative")), new(1440, "1440p"), new(1080, "1080p"), new(720, "720p")];
+
+    public System.Collections.ObjectModel.ObservableCollection<TemplateItem> Templates { get; } = [];
+
+    public bool HasTemplates => Templates.Count > 0;
+
+    public bool HasToolbarPosition => _settings.ToolbarX is not null;
+
     public IReadOnlyList<Choice<int>> Delays { get; } = [new(3, "3 s"), new(5, "5 s"), new(10, "10 s")];
 
     public IReadOnlyList<Choice<int>> Retentions { get; } =
@@ -192,6 +226,12 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     // ---------------------------------------------------------------- video
     [ObservableProperty] private Choice<int>? _fps;
+    [ObservableProperty] private Choice<VideoProfile>? _profile;
+    [ObservableProperty] private bool _chroma444;
+    [ObservableProperty] private Choice<int>? _outputHeight;
+    [ObservableProperty] private bool _videoCountdown;
+    [ObservableProperty] private bool _askSecondaryAudio;
+    [ObservableProperty] private string _hotkeyToolbar = "";
     [ObservableProperty] private int _quality;
     [ObservableProperty] private Choice<string>? _encoder;
     [ObservableProperty] private bool _recordSystemSound;
@@ -314,6 +354,20 @@ public sealed partial class SettingsViewModel : PageViewModel
         HotkeyVideoFullScreen = _settings.HotkeyText(CaptureMode.VideoFullScreen);
         HotkeyPause = Hotkey.Parse(_settings.PauseHotkey).ToString();
         Fps = FpsChoices.FirstOrDefault(f => f.Value == _settings.VideoFps) ?? FpsChoices[2];
+        Profile = Profiles.First(p => p.Value == _settings.VideoProfile);
+        Chroma444 = _settings.Chroma444;
+        OutputHeight = OutputHeights.FirstOrDefault(o => o.Value == _settings.VideoOutputHeight) ?? OutputHeights[0];
+        VideoCountdown = _settings.VideoCountdown;
+        AskSecondaryAudio = _settings.AskSecondaryAudio;
+        HotkeyToolbar = Hotkey.Parse(_settings.ToolbarHotkey).ToString();
+        Templates.Clear();
+        foreach (var template in _settings.Templates)
+        {
+            Templates.Add(new TemplateItem(template, _settings.Save));
+        }
+
+        OnPropertyChanged(nameof(HasTemplates));
+        OnPropertyChanged(nameof(HasToolbarPosition));
         Quality = _settings.VideoQuality;
         Encoder = Encoders.FirstOrDefault(e => e.Value == _settings.VideoEncoder) ?? Encoders[0];
         RecordSystemSound = _settings.RecordSystemSound;
@@ -591,6 +645,62 @@ public sealed partial class SettingsViewModel : PageViewModel
 
     partial void OnHotkeyPauseChanged(string value) => Set(() => _settings.PauseHotkey = Hotkey.Parse(value).ToString());
 
+    partial void OnProfileChanged(Choice<VideoProfile>? value)
+    {
+        if (value is not null)
+        {
+            Set(() => _settings.VideoProfile = value.Value);
+        }
+    }
+
+    partial void OnChroma444Changed(bool value) => Set(() => _settings.Chroma444 = value);
+
+    partial void OnOutputHeightChanged(Choice<int>? value)
+    {
+        if (value is not null)
+        {
+            Set(() => _settings.VideoOutputHeight = value.Value);
+        }
+    }
+
+    partial void OnVideoCountdownChanged(bool value) => Set(() => _settings.VideoCountdown = value);
+
+    partial void OnAskSecondaryAudioChanged(bool value) => Set(() => _settings.AskSecondaryAudio = value);
+
+    partial void OnHotkeyToolbarChanged(string value) => Set(() => _settings.ToolbarHotkey = Hotkey.Parse(value).ToString());
+
+    [RelayCommand]
+    private void ResetToolbarPosition()
+    {
+        _settings.ToolbarX = null;
+        _settings.ToolbarY = null;
+        _settings.Save();
+        OnPropertyChanged(nameof(HasToolbarPosition));
+    }
+
+    [RelayCommand]
+    private void StartTemplate(TemplateItem? item)
+    {
+        if (item is not null)
+        {
+            _host.StartTemplate(item.Template);
+        }
+    }
+
+    [RelayCommand]
+    private async Task DeleteTemplateAsync(TemplateItem? item)
+    {
+        if (item is null || !await _host.Confirm(Loc.T("SetTemplateDelete"), item.Name, Loc.T("SetTemplateDelete")))
+        {
+            return;
+        }
+
+        _settings.Templates.Remove(item.Template);
+        _settings.Save();
+        Templates.Remove(item);
+        OnPropertyChanged(nameof(HasTemplates));
+    }
+
     partial void OnFpsChanged(Choice<int>? value)
     {
         if (value is not null)
@@ -701,6 +811,7 @@ public sealed partial class SettingsViewModel : PageViewModel
     {
         _settings.Hotkeys = new Dictionary<CaptureMode, string>(UiSettings.DefaultHotkeys);
         _settings.PauseHotkey = UiSettings.DefaultPauseHotkey;
+        _settings.ToolbarHotkey = UiSettings.DefaultToolbarHotkey;
         _settings.Save();
         Load();
     }
@@ -809,6 +920,24 @@ public sealed partial class SettingsViewModel : PageViewModel
         {
             IsTesting = false;
             OnPropertyChanged(nameof(DetectedEncoderText));
+        }
+    }
+
+    /// <summary>Settings › Reset SnapNova (not while recording).</summary>
+    [RelayCommand]
+    private async Task ResetAppAsync()
+    {
+        if (_host.IsRecording())
+        {
+            _host.ShowToast(Loc.T("ResetWhileRecording"));
+            return;
+        }
+
+        var (count, bytes) = await Task.Run(() => AppReset.MediaSummary(_settings));
+        var size = EditorViewModel.FormatSize(bytes);
+        if (await Views.ResetWindow.ShowAsync(_host.VisibleOwner(), count, size, FfmpegInstalled) is { } choice)
+        {
+            await _host.ResetApp(choice);
         }
     }
 

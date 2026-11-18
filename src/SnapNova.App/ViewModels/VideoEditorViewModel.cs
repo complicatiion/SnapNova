@@ -66,7 +66,42 @@ public sealed partial class VideoEditorViewModel : ObservableObject, IDisposable
     [ObservableProperty] private bool _loop;
     [ObservableProperty] private double _followZoom;
     [ObservableProperty] private Choice<int>? _gifWidth;
-    [ObservableProperty] private string _status = "";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StatusOrInfo))]
+    private string _status = "";
+
+    /// <summary>Top bar: the last message, otherwise the video information.</summary>
+    public string StatusOrInfo => Status.Length > 0 ? Status : InfoText;
+
+    /// <summary>1920 × 1080 · 60 fps · H.264 · 8.4 Mbit/s · 124 MB</summary>
+    public string InfoText
+    {
+        get
+        {
+            if (Player.Info is not { } info)
+            {
+                return "";
+            }
+
+            var parts = new List<string> { $"{info.Width} × {info.Height}", $"{info.Fps:0.#} fps" };
+            if (info.Codec.Length > 0)
+            {
+                parts.Add(info.Codec switch { "h264" => "H.264", "hevc" => "HEVC", "vp9" => "VP9", "av1" => "AV1", _ => info.Codec.ToUpperInvariant() });
+            }
+
+            if (info.BitrateKbps > 0)
+            {
+                parts.Add($"{info.BitrateKbps / 1000.0:0.#} Mbit/s");
+            }
+
+            if (System.IO.File.Exists(File))
+            {
+                parts.Add(EditorViewModel.FormatSize(new FileInfo(File).Length));
+            }
+
+            return string.Join(" · ", parts);
+        }
+    }
 
     /// <summary>Selected cut-out part in the timeline (-1 = none) – Del brings it back.</summary>
     [ObservableProperty]
@@ -104,6 +139,8 @@ public sealed partial class VideoEditorViewModel : ObservableObject, IDisposable
         }
 
         Duration = Math.Max(0.1, Player.Info.Duration.TotalSeconds);
+        OnPropertyChanged(nameof(InfoText));
+        OnPropertyChanged(nameof(StatusOrInfo));
         Edit.Reset(Duration);
         SelectedRemoved = -1;
         GifWidth = GifWidths[1];

@@ -88,7 +88,7 @@
           </Panel>
           <!-- While recording: start a second recording (own colour, stopped together) -->
           <Button Classes="rail" IsVisible="{Binding CanSecondRecording}" Command="{Binding SecondRecordingCommand}"
-                  ToolTip.Tip="{DynamicResource RecSecondTip}">
+                  ToolTip.Tip="{Binding SecondTip}">
             <PathIcon Data="{StaticResource IconVideoPlus}" />
           </Button>
         </StackPanel>

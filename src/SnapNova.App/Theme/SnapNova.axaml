@@ -353,7 +353,29 @@
     <Setter Property="Padding" Value="0" />
     <Setter Property="Opacity" Value="0" />
     <Setter Property="Background" Value="#D01E1E1E" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+    <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Cursor" Value="Hand" />
+    <!-- Own template: the Fluent box sits in a 32 px high grid and was cut off at 22 px; this one is exactly as high as the pills -->
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="box" Width="22" Height="22" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}">
+          <PathIcon Name="mark" Data="{StaticResource IconCheck}" Width="13" Height="13" Foreground="White"
+                    HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="CheckBox.cardcheck:pointerover /template/ Border#box">
+    <Setter Property="Background" Value="#F02A2A2A" />
+  </Style>
+  <Style Selector="CheckBox.cardcheck:checked /template/ Border#box">
+    <Setter Property="Background" Value="{DynamicResource BrushAccent}" />
+  </Style>
+  <Style Selector="CheckBox.cardcheck:checked /template/ PathIcon#mark">
+    <Setter Property="IsVisible" Value="True" />
   </Style>
   <Style Selector="Border.thumbcard:pointerover CheckBox.cardcheck, CheckBox.cardcheck.show">
     <Setter Property="Opacity" Value="1" />
@@ -426,6 +448,13 @@
     <Setter Property="Foreground" Value="White" />
   </Style>
   <Style Selector="Button.dangerlabel PathIcon">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="Button.dangerlabel:disabled">
+    <Setter Property="Opacity" Value="0.45" />
+  </Style>
+  <Style Selector="Button.dangerlabel:disabled /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource BrushDanger}" />
     <Setter Property="Foreground" Value="White" />
   </Style>
 

@@ -14,6 +14,7 @@ public sealed class HotkeyManager : IDisposable
     private readonly ICaptureCoordinator _capture;
     private const int PauseId = 1000;
     private const int PrintId = 1001;
+    private const int ToolbarId = 1002;
     private readonly HotkeyService? _service;
     private string _registered = "";
 
@@ -32,6 +33,10 @@ public sealed class HotkeyManager : IDisposable
             if (id == PauseId)
             {
                 _capture.TogglePause();
+            }
+            else if (id == ToolbarId)
+            {
+                _capture.ToggleToolbar();
             }
             else if (id == PrintId)
             {
@@ -67,7 +72,8 @@ public sealed class HotkeyManager : IDisposable
 
         // Settings.Changed fires for every setting – only re-register when the hotkeys changed.
         var signature = string.Join('|', _settings.Hotkeys.OrderBy(h => h.Key).Select(h => $"{h.Key}={h.Value}")) + "|pause=" + _settings.PauseHotkey
-                        + "|print=" + _settings.PrintKeyMode;
+                        + "|print=" + _settings.PrintKeyMode
+                        + "|toolbar=" + _settings.ToolbarHotkey;
         if (signature == _registered)
         {
             return;
@@ -79,8 +85,9 @@ public sealed class HotkeyManager : IDisposable
 
         // Print key (no modifiers) for the capture chosen in Settings › Capture.
         keys.Add((PrintId, _settings.PrintKeyMode is null ? default : Hotkey.Parse("PrintScreen")));
+        keys.Add((ToolbarId, Hotkey.Parse(_settings.ToolbarHotkey)));
         var result = await _service.SetAsync(keys);
-        Failed = result.Where(r => !r.Value && r.Key != PauseId && r.Key != PrintId).Select(r => (CaptureMode)r.Key).ToList();
+        Failed = result.Where(r => !r.Value && r.Key != PauseId && r.Key != PrintId && r.Key != ToolbarId).Select(r => (CaptureMode)r.Key).ToList();
         PrintFailed = _settings.PrintKeyMode is not null && result.TryGetValue(PrintId, out var printOk) && !printOk;
         PauseFailed = result.TryGetValue(PauseId, out var pauseOk) && !pauseOk;
         Dispatcher.UIThread.Post(() => FailedChanged?.Invoke());

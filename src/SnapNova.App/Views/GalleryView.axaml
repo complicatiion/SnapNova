@@ -184,6 +184,13 @@
                                   <TextBlock Text="{Binding TypeText}" Classes="small" FontWeight="SemiBold" />
                                 </StackPanel>
                               </Border>
+                              <Border Grid.Column="2" Classes="typepill" Margin="6,0,0,0" HorizontalAlignment="Left" IsVisible="{Binding HasChain}"
+                                      ToolTip.Tip="{Binding ChainTip}">
+                                <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                  <PathIcon Data="{StaticResource IconLink}" Width="12" Height="12" />
+                                  <TextBlock Text="{Binding ChainText}" Classes="small" FontWeight="SemiBold" />
+                                </StackPanel>
+                              </Border>
                               <Border Grid.Column="3" Classes="formatpill overlay">
                                 <TextBlock Text="{Binding KindText}" Classes="small" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                               </Border>
@@ -243,12 +250,20 @@
                     </Panel>
                   </Border>
                   <TextBlock Grid.Column="2" Text="{Binding Name}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0" TextTrimming="CharacterEllipsis" />
-                  <Border Grid.Column="3" Classes="typepill" Margin="8,0" VerticalAlignment="Center">
-                    <StackPanel Orientation="Horizontal" Spacing="4">
-                      <PathIcon Data="{Binding TypeIcon}" Width="12" Height="12" />
-                      <TextBlock Text="{Binding TypeText}" Classes="small" FontWeight="SemiBold" />
-                    </StackPanel>
-                  </Border>
+                  <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6" Margin="8,0" VerticalAlignment="Center">
+                    <Border Classes="typepill" IsVisible="{Binding HasChain}" ToolTip.Tip="{Binding ChainTip}">
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <PathIcon Data="{StaticResource IconLink}" Width="12" Height="12" />
+                        <TextBlock Text="{Binding ChainText}" Classes="small" FontWeight="SemiBold" />
+                      </StackPanel>
+                    </Border>
+                    <Border Classes="typepill">
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <PathIcon Data="{Binding TypeIcon}" Width="12" Height="12" />
+                        <TextBlock Text="{Binding TypeText}" Classes="small" FontWeight="SemiBold" />
+                      </StackPanel>
+                    </Border>
+                  </StackPanel>
                   <Border Grid.Column="4" Classes="formatpill" Margin="0,0,8,0">
                     <TextBlock Classes="small" Text="{Binding KindText}" FontWeight="SemiBold" HorizontalAlignment="Center" />
                   </Border>

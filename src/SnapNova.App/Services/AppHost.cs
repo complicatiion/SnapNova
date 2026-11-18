@@ -46,6 +46,15 @@ public sealed class AppHost
     /// <summary>Opens Settings › Video at the FFmpeg card.</summary>
     public Action OpenFfmpegSettings { get; set; } = () => { };
 
+    /// <summary>Settings › Reset: close everything, reset, start SnapNova again.</summary>
+    public Func<Views.ResetChoice, Task> ResetApp { get; set; } = _ => Task.CompletedTask;
+
+    /// <summary>Starts a saved multi-recording.</summary>
+    public Action<RecordingTemplate> StartTemplate { get; set; } = _ => { };
+
+    /// <summary>A video recording runs (reset is not possible then).</summary>
+    public Func<bool> IsRecording { get; set; } = () => false;
+
     /// <summary>FFmpeg was installed or removed (gallery pill, settings).</summary>
     public event Action? FfmpegChanged;
 

@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -31,10 +32,16 @@ public sealed class RecordingChrome
     private readonly bool _showToolbar;
     private readonly Color _color;
 
-    /// <param name="addRecording">Toolbar "+" (second recording); null = no button.</param>
+    private readonly PixelPoint? _savedPosition;
+
+    /// <param name="addRecording">Toolbar "+" (further recording); null = no button.</param>
+    /// <param name="savedPosition">Where the user last dragged the toolbar (null = automatic).</param>
+    /// <param name="moved">The user dragged the toolbar (null = position stored); called with null after a double-click reset.</param>
     public RecordingChrome(ScreenRect area, ScreenRect monitor, Func<TimeSpan> elapsed, Action togglePause, Action stop, Action cancel,
-        bool showFrame = true, bool showToolbar = true, Color? color = null, Action? addRecording = null)
+        bool showFrame = true, bool showToolbar = true, Color? color = null, Action? addRecording = null,
+        PixelPoint? savedPosition = null, Action<PixelPoint?>? moved = null)
     {
+        _savedPosition = savedPosition;
         _showToolbar = showToolbar;
         _color = color ?? SessionColors[0];
         var t = Thickness;
@@ -58,6 +65,12 @@ public sealed class RecordingChrome
         }
 
         _toolbar = new RecordingToolbar(togglePause, stop, cancel, addRecording, _color);
+        _toolbar.Moved += p => moved?.Invoke(p);
+        _toolbar.ResetRequested += () =>
+        {
+            moved?.Invoke(null);
+            PlaceAutomatically(area, monitor);
+        };
         PlaceToolbar(area, monitor);
         _timer = new DispatcherTimer(TimeSpan.FromMilliseconds(250), DispatcherPriority.Background, (_, _) => _toolbar.SetElapsed(elapsed()));
     }
@@ -94,7 +107,24 @@ public sealed class RecordingChrome
 
     public void RemoveSession(int number) => _toolbar.RemoveSession(number);
 
-    public void SetCanAdd(bool canAdd) => _toolbar.SetCanAdd(canAdd);
+    public void SetCanAdd(bool canAdd, int running = 1, int max = 4) => _toolbar.SetCanAdd(canAdd, running, max);
+
+    /// <summary>FFmpeg dropped frames: warning sign in the toolbar.</summary>
+    public void SetDropped(int frames) => _toolbar.SetDropped(frames);
+
+    /// <summary>Hotkey: show or hide the toolbar during the recording (also when it is switched off in the settings).</summary>
+    public void ToggleToolbar()
+    {
+        if (_toolbar.IsVisible)
+        {
+            _toolbar.Hide();
+        }
+        else
+        {
+            _toolbar.Show();
+            _timer.Start();
+        }
+    }
 
     public void Close()
     {
@@ -104,10 +134,7 @@ public sealed class RecordingChrome
             window.Close();
         }
 
-        if (_showToolbar)
-        {
-            _toolbar.Close();
-        }
+        _toolbar.Close();
     }
 
     internal static Window CreateStrip(ScreenRect rect)
@@ -140,24 +167,16 @@ public sealed class RecordingChrome
     {
         _toolbar.Opened += (_, _) =>
         {
-            var scaling = _toolbar.RenderScaling;
-            var width = (int)Math.Ceiling(_toolbar.ClientSize.Width * scaling);
-            var height = (int)Math.Ceiling(_toolbar.ClientSize.Height * scaling);
-            var x = Math.Clamp(area.X + (area.Width - width) / 2, monitor.X, Math.Max(monitor.X, monitor.Right - width));
-
-            // Below the area, else above, else inside the bottom edge (full screen) – it is excluded from capture anyway.
-            var y = area.Bottom + Thickness + 8;
-            if (y + height > monitor.Bottom)
+            // 1. Where the user dragged it last time (if that spot is still on a screen).
+            if (_savedPosition is { } saved && _toolbar.Screens.All.Any(s => s.Bounds.Contains(saved)))
             {
-                y = area.Y - Thickness - 8 - height;
+                _toolbar.Position = saved;
+            }
+            else
+            {
+                PlaceAutomatically(area, monitor);
             }
 
-            if (y < monitor.Y)
-            {
-                y = monitor.Bottom - height - 48;
-            }
-
-            _toolbar.Position = new PixelPoint(x, y);
             if (_toolbar.TryGetPlatformHandle()?.Handle is { } hwnd)
             {
                 WindowTools.MakeToolWindow(hwnd, noActivate: false);
@@ -166,7 +185,53 @@ public sealed class RecordingChrome
         };
 
         // Start near the area so the window opens on the right monitor (scaling); the exact spot follows in Opened.
-        _toolbar.Position = new PixelPoint(area.X, Math.Min(area.Bottom + 8, monitor.Bottom - 80));
+        _toolbar.Position = _savedPosition ?? new PixelPoint(area.X, Math.Min(area.Bottom + 8, monitor.Bottom - 80));
+    }
+
+    /// <summary>
+    /// 2. A monitor that is not recorded (primary first), top centre – out of the way on multi-monitor desks.
+    /// 3. Otherwise next to the area (below, above, or at the bottom edge for full screen).
+    /// </summary>
+    private void PlaceAutomatically(ScreenRect area, ScreenRect monitor)
+    {
+        var scaling = _toolbar.RenderScaling;
+        var width = (int)Math.Ceiling(_toolbar.ClientSize.Width * scaling);
+        var height = (int)Math.Ceiling(_toolbar.ClientSize.Height * scaling);
+        var areaCenter = new PixelPoint(area.X + area.Width / 2, area.Y + area.Height / 2);
+        var free = _toolbar.Screens.All
+            .Where(s => !s.Bounds.Contains(areaCenter) && !Intersects(s.Bounds, area))
+            .OrderByDescending(s => s.IsPrimary)
+            .FirstOrDefault();
+        if (free is not null)
+        {
+            var work = free.WorkingArea;
+            _toolbar.Position = new PixelPoint(work.X + (work.Width - width) / 2, work.Y + 24);
+            return;
+        }
+
+        PlaceNear(area, monitor, width, height);
+    }
+
+    private static bool Intersects(PixelRect bounds, ScreenRect area) =>
+        area.X < bounds.Right && area.Right > bounds.X && area.Y < bounds.Bottom && area.Bottom > bounds.Y;
+
+    private void PlaceNear(ScreenRect area, ScreenRect monitor, int width, int height)
+    {
+        var x = Math.Clamp(area.X + (area.Width - width) / 2, monitor.X, Math.Max(monitor.X, monitor.Right - width));
+
+        // Below the area, else above, else inside the bottom edge (full screen) – it is excluded from capture anyway.
+        var y = area.Bottom + Thickness + 8;
+        if (y + height > monitor.Bottom)
+        {
+            y = area.Y - Thickness - 8 - height;
+        }
+
+        if (y < monitor.Y)
+        {
+            y = monitor.Bottom - height - 48;
+        }
+
+        _toolbar.Position = new PixelPoint(x, y);
     }
 
     /// <summary>Physical rectangle → window position and size in DIPs of the target monitor.</summary>
@@ -194,6 +259,14 @@ internal sealed class RecordingToolbar : Window
     private readonly StackPanel _sessions = new() { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
     private readonly Dictionary<int, Control> _sessionChips = [];
     private readonly Color _color;
+    private readonly PathIcon _dropWarning;
+    private bool _dragging;
+
+    /// <summary>The user dragged the toolbar to a new position.</summary>
+    public event Action<PixelPoint>? Moved;
+
+    /// <summary>Double-click on the grip: back to the automatic position.</summary>
+    public event Action? ResetRequested;
 
     public RecordingToolbar(Action togglePause, Action stop, Action cancel, Action? addRecording = null, Color? color = null)
     {
@@ -210,6 +283,45 @@ internal sealed class RecordingToolbar : Window
 
         _dot = new Ellipse { Width = 10, Height = 10, Fill = new SolidColorBrush(_color), VerticalAlignment = VerticalAlignment.Center };
         _time = new TextBlock { Text = "00:00", FontWeight = FontWeight.SemiBold, FontSize = 14, MinWidth = 52, VerticalAlignment = VerticalAlignment.Center };
+        _dropWarning = new PathIcon
+        {
+            Data = Res.Icon("IconAlert"), Width = 16, Height = 16, Foreground = Brushes.Orange, IsVisible = false,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+
+        // Grip: drag the toolbar anywhere (also onto another monitor); double-click puts it back.
+        var grip = new Border
+        {
+            Background = Brushes.Transparent,
+            Cursor = new Cursor(StandardCursorType.SizeAll),
+            Padding = new Thickness(0, 4),
+            Child = new PathIcon { Data = Res.Icon("IconDragGrip"), Width = 14, Height = 18, Foreground = new SolidColorBrush(Color.Parse("#B0B0B0")) }
+        };
+        ToolTip.SetTip(grip, Loc.T("RecMoveTip"));
+        grip.PointerPressed += (_, e) =>
+        {
+            if (e.ClickCount == 2)
+            {
+                ResetRequested?.Invoke();
+                return;
+            }
+
+            if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            {
+                _dragging = true;
+                BeginMoveDrag(e);
+            }
+        };
+        PositionChanged += (_, _) =>
+        {
+            if (_dragging)
+            {
+                Moved?.Invoke(Position);
+            }
+        };
+        PointerReleased += (_, _) => _dragging = false;
+        PointerCaptureLost += (_, _) => _dragging = false;
+        _grip = grip;
         _pauseLabel = new IconLabel { Icon = Res.Icon("IconPause"), Text = Loc.T("RecPause") };
         _pause = new Button { Content = _pauseLabel };
         _pause.Click += (_, _) => togglePause();
@@ -229,7 +341,7 @@ internal sealed class RecordingToolbar : Window
         if (addRecording is not null)
         {
             _add = new Button { Content = new PathIcon { Data = Res.Icon("IconVideoPlus"), Width = 16, Height = 16 } };
-            ToolTip.SetTip(_add, Loc.T("RecSecondTip"));
+            ToolTip.SetTip(_add, Loc.F("RecMoreTip", 2, 4));
             _add.Click += (_, _) => addRecording();
         }
 
@@ -245,7 +357,7 @@ internal sealed class RecordingToolbar : Window
                 Orientation = Orientation.Horizontal,
                 Spacing = 10,
                 // Cancel left, main action (Stop – ends all recordings) right.
-                Children = { _dot, _time, _sessions }
+                Children = { _grip, _dot, _time, _dropWarning, _sessions }
             }
         };
         RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark;
@@ -291,12 +403,21 @@ internal sealed class RecordingToolbar : Window
         }
     }
 
-    public void SetCanAdd(bool canAdd)
+    private readonly Border _grip;
+
+    public void SetCanAdd(bool canAdd, int running, int max)
     {
         if (_add is not null)
         {
             _add.IsEnabled = canAdd;
+            ToolTip.SetTip(_add, Loc.F("RecMoreTip", Math.Min(running + 1, max), max));
         }
+    }
+
+    public void SetDropped(int frames)
+    {
+        _dropWarning.IsVisible = frames > 0;
+        ToolTip.SetTip(_dropWarning, Loc.F("RecDroppedTip", frames));
     }
 
     public void SetElapsed(TimeSpan elapsed) =>

@@ -9,7 +9,7 @@ using SnapNova.Platform.Windows.Recording;
 namespace SnapNova.Platform.Windows.Media;
 
 /// <summary>Duration and picture size of a video (read from FFmpeg's stream info).</summary>
-public sealed record VideoInfo(TimeSpan Duration, int Width, int Height, double Fps, bool HasAudio);
+public sealed record VideoInfo(TimeSpan Duration, int Width, int Height, double Fps, bool HasAudio, string Codec = "", int BitrateKbps = 0);
 
 /// <summary>
 /// Preview player for the video editor, built on the user's ffmpeg.exe: one process decodes scaled BGRA frames, a second
@@ -70,7 +70,9 @@ public sealed partial class PreviewPlayer(string ffmpeg) : IDisposable
             int.Parse(size.Groups[1].Value, CultureInfo.InvariantCulture),
             int.Parse(size.Groups[2].Value, CultureInfo.InvariantCulture),
             fps.Success ? double.Parse(fps.Groups[1].Value, CultureInfo.InvariantCulture) : 30,
-            text.Contains("Audio:", StringComparison.Ordinal));
+            text.Contains("Audio:", StringComparison.Ordinal),
+            CodecRegex().Match(text) is { Success: true } codec ? codec.Groups[1].Value : "",
+            BitrateRegex().Match(text) is { Success: true } rate ? int.Parse(rate.Groups[1].Value, CultureInfo.InvariantCulture) : 0);
     }
 
     /// <summary>Reads the video info and fits the preview into maxWidth × maxHeight (even sizes).</summary>
@@ -103,7 +105,8 @@ public sealed partial class PreviewPlayer(string ffmpeg) : IDisposable
         _clock.Reset();
         _cts = new CancellationTokenSource();
         var ct = _cts.Token;
-        var fps = Math.Clamp((int)Math.Round(Info.Fps), 10, 30);
+        // Native size up to the screen; 60 fps only up to ~1080p (above that the pipe would carry too much data).
+        var fps = Math.Clamp((int)Math.Round(Info.Fps), 10, FrameWidth * FrameHeight <= 2_200_000 ? 60 : 30);
 
         _video = Start(RecordingArguments.DecodeVideo(File, from, FrameWidth, FrameHeight, fps));
         _audio = Info.HasAudio ? Start(RecordingArguments.DecodeAudio(File, from)) : null;
@@ -325,4 +328,10 @@ public sealed partial class PreviewPlayer(string ffmpeg) : IDisposable
 
     [GeneratedRegex(@"(\d+(?:\.\d+)?) fps")]
     private static partial Regex FpsRegex();
+
+    [GeneratedRegex(@"Video: (\w+)")]
+    private static partial Regex CodecRegex();
+
+    [GeneratedRegex(@"bitrate: (\d+) kb/s")]
+    private static partial Regex BitrateRegex();
 }

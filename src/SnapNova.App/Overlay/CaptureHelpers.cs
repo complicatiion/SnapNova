@@ -121,10 +121,11 @@ public sealed class CountdownWindow : Window
     }
 
     /// <summary>Counts down next to the cursor; false when cancelled with Esc.</summary>
-    public static async Task<bool> RunAsync(int seconds)
+    /// <param name="center">Centre of the countdown (e.g. the middle of the area about to be recorded); null = next to the cursor.</param>
+    public static async Task<bool> RunAsync(int seconds, PixelPoint? center = null)
     {
         var (cx, cy) = OperatingSystem.IsWindows() ? SnapNova.Platform.Windows.Capture.ScreenCapture.CursorPosition() : (0, 0);
-        var window = new CountdownWindow { Position = new PixelPoint(cx + 24, cy + 24) };
+        var window = new CountdownWindow { Position = center is { } c ? new PixelPoint(c.X - 48, c.Y - 48) : new PixelPoint(cx + 24, cy + 24) };
         window.Opened += (_, _) =>
         {
             if (window.TryGetPlatformHandle()?.Handle is { } hwnd)

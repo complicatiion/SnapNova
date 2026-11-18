@@ -68,6 +68,16 @@ public sealed partial class GalleryItemViewModel(LibraryItem item, TrashEntry? t
         _ => Item.Extension.TrimStart('.').ToUpperInvariant()
     };
 
+    /// <summary>Part of a multi-recording ("2/3"); empty for single captures.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasChain))]
+    [NotifyPropertyChangedFor(nameof(ChainTip))]
+    private string _chainText = "";
+
+    public bool HasChain => ChainText.Length > 0;
+
+    public string ChainTip => Loc.F("GalChainTip", ChainText);
+
     /// <summary>Recognized text (.snova) for the search – loaded in the background.</summary>
     public string? Text { get; set; }
 
@@ -401,9 +411,54 @@ public sealed partial class GalleryViewModel : PageViewModel, IDisposable
                 ? old
                 : new GalleryItemViewModel(i.Item, i.Trash) { Owner = this, Text = _textIndex.GetValueOrDefault(i.Item.Path) })
             .ToList();
+        MarkChains(_all);
         IsLoading = false;
         ApplyFilter();
         _ = IndexTextAsync(_all.Where(i => i.IsProject && i.Text is null).ToList());
+    }
+
+    /// <summary>Videos of one multi-recording ("…", "…_rec2", "…_rec3") get a chain pill "1/3", "2/3", …</summary>
+    private static void MarkChains(IReadOnlyList<GalleryItemViewModel> items)
+    {
+        var videos = items.Where(i => i.IsVideo && !i.IsTrash).ToList();
+        var groups = new Dictionary<string, List<(GalleryItemViewModel Item, int Number)>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in videos)
+        {
+            if (CaptureLibrary.PartOf(item.Item.Name) is { } part)
+            {
+                var key = Path.Combine(Path.GetDirectoryName(item.Item.Path) ?? "", part.Stem);
+                if (!groups.TryGetValue(key, out var list))
+                {
+                    list = [];
+                    groups[key] = list;
+                }
+
+                list.Add((item, part.Number));
+            }
+        }
+
+        foreach (var item in videos)
+        {
+            item.ChainText = "";
+        }
+
+        foreach (var item in videos)
+        {
+            var key = Path.Combine(Path.GetDirectoryName(item.Item.Path) ?? "", item.Item.Name);
+            if (groups.TryGetValue(key, out var list) && !list.Any(e => e.Number == 1))
+            {
+                list.Add((item, 1));
+            }
+        }
+
+        foreach (var list in groups.Values)
+        {
+            var ordered = list.OrderBy(e => e.Number).ThenBy(e => e.Item.Item.Name, StringComparer.OrdinalIgnoreCase).ToList();
+            for (var i = 0; i < ordered.Count; i++)
+            {
+                ordered[i].Item.ChainText = $"{i + 1}/{ordered.Count}";
+            }
+        }
     }
 
     /// <summary>Reads the recognized text of the .snova files once (for the search).</summary>

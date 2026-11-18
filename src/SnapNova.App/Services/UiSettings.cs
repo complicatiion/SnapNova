@@ -6,6 +6,24 @@ using SnapNova.Core.Media;
 
 namespace SnapNova.App.Services;
 
+/// <summary>One area of a multi-recording template (monitor-relative pixels).</summary>
+public sealed class TemplateArea
+{
+    public string Monitor { get; set; } = "";
+    public int X { get; set; }
+    public int Y { get; set; }
+    public int Width { get; set; }
+    public int Height { get; set; }
+    public SecondaryAudio Audio { get; set; }
+}
+
+/// <summary>Saved multi-recording: the first area is the main recording (its sound follows the video settings).</summary>
+public sealed class RecordingTemplate
+{
+    public string Name { get; set; } = "";
+    public List<TemplateArea> Areas { get; set; } = [];
+}
+
 public enum DisplayProfile
 {
     Auto,
@@ -115,6 +133,7 @@ public sealed class UiSettings
     };
 
     public const string DefaultPauseHotkey = "Ctrl+Shift+P";
+    public const string DefaultToolbarHotkey = "Ctrl+Shift+H";
 
     // ---------------------------------------------------------------- general
     public string? Language { get; set; }
@@ -161,6 +180,9 @@ public sealed class UiSettings
     public bool RecognizeText { get; set; } = true;
     public Dictionary<CaptureMode, string> Hotkeys { get; set; } = new(DefaultHotkeys);
     public string PauseHotkey { get; set; } = DefaultPauseHotkey;
+
+    /// <summary>Shows or hides the recording toolbar while recording.</summary>
+    public string ToolbarHotkey { get; set; } = DefaultToolbarHotkey;
 
     // ---------------------------------------------------------------- export
     public ImageFormat ImageFormat { get; set; } = ImageFormat.Png;
@@ -213,6 +235,31 @@ public sealed class UiSettings
     /// <summary>Additional recordings (second recording): sound and microphone.</summary>
     public SecondaryAudio SecondaryAudio { get; set; } = SecondaryAudio.None;
     public bool SecondaryMicrophone { get; set; }
+
+    /// <summary>Ask for the sound of each further recording right after its area is chosen.</summary>
+    public bool AskSecondaryAudio { get; set; } = true;
+
+    /// <summary>Saved multi-recordings: several areas/monitors started together with one click.</summary>
+    public List<RecordingTemplate> Templates { get; set; } = [];
+
+    // ---------------------------------------------------------------- video quality (0.0.8)
+    public VideoProfile VideoProfile { get; set; } = VideoProfile.Screen;
+
+    /// <summary>Full colour resolution (4:4:4): sharp coloured text; NVIDIA and CPU encoders, not every player plays it.</summary>
+    public bool Chroma444 { get; set; }
+
+    /// <summary>0 = native size; 1080 / 720 = scaled down.</summary>
+    public int VideoOutputHeight { get; set; }
+
+    /// <summary>3-2-1 before a video starts.</summary>
+    public bool VideoCountdown { get; set; } = true;
+
+    /// <summary>Last position of the recording toolbar (physical pixels); null = automatic.</summary>
+    public int? ToolbarX { get; set; }
+    public int? ToolbarY { get; set; }
+
+    /// <summary>Encoder order of the detection: 2 = Media Foundation last (earlier detections are tested again once).</summary>
+    public int EncoderOrderVersion { get; set; }
     public string? CustomPlayer { get; set; }
 
     // ---------------------------------------------------------------- gallery
@@ -278,8 +325,17 @@ public sealed class UiSettings
         return new UiSettings();
     }
 
+    /// <summary>Set by "Reset SnapNova": no later save may bring the old settings back.</summary>
+    [JsonIgnore]
+    public bool Frozen { get; set; }
+
     public void Save()
     {
+        if (Frozen)
+        {
+            return;
+        }
+
         try
         {
             Directory.CreateDirectory(AppEnvironment.DataDirectory);

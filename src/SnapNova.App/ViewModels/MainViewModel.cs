@@ -1,6 +1,7 @@
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using SnapNova.App.Localization;
 using SnapNova.App.Services;
 using SnapNova.Core.Capture;
 
@@ -168,7 +169,7 @@ public sealed partial class MainViewModel : ObservableObject
                  {
                      nameof(IsRecording), nameof(VideoIcon), nameof(LastIsRegion), nameof(LastIsWindow), nameof(LastIsFullScreen),
                      nameof(LastIsScrolling), nameof(LastIsDelayed), nameof(LastIsVideo), nameof(TipRegion), nameof(TipWindow),
-                     nameof(TipFullScreen), nameof(TipScrolling), nameof(TipDelayed), nameof(TipVideo), nameof(CanSecondRecording)
+                     nameof(TipFullScreen), nameof(TipScrolling), nameof(TipDelayed), nameof(TipVideo), nameof(CanSecondRecording), nameof(SecondTip)
                  })
         {
             OnPropertyChanged(name);
@@ -214,6 +215,9 @@ public sealed partial class MainViewModel : ObservableObject
     private Task SecondRecording() => Capture.StartSecondaryAsync();
 
     public bool CanSecondRecording => IsRecording && Capture.CanAddRecording;
+
+    /// <summary>Tooltip of the "+" button: which recording it starts (e.g. 3/4).</summary>
+    public string SecondTip => Loc.F("RecMoreTip", Capture.RecordingCount + 1, Capture.MaxRecordingCount);
 
     [RelayCommand]
     private void ShowAbout() => NavigateTo(About);

@@ -66,7 +66,10 @@ public partial class VideoEditorWindow : Window
                 Position = new PixelPoint(area.X + (int)((area.Width - Width * scale) / 2), area.Y + (int)((area.Height - Height * scale) / 2));
             }
 
-            if (!await vm.OpenAsync(1280, 720))
+            // Preview in native resolution, at most the pixel size of this screen (earlier: 720p – that made videos look soft).
+            var maxWidth = screen?.Bounds.Width ?? 1920;
+            var maxHeight = screen?.Bounds.Height ?? 1080;
+            if (!await vm.OpenAsync(Math.Max(1280, maxWidth), Math.Max(720, maxHeight)))
             {
                 vm.Status = Loc.T("VedOpenFailed");
             }

@@ -14,6 +14,9 @@ internal static class Program
 {
     private const string MutexName = @"Local\SnapNova.App";
 
+    /// <summary>Start of the new instance after "Reset SnapNova".</summary>
+    public const string RestartArgument = "--after-reset";
+
     /// <summary>Pipe name per user session (Local\ is not available for pipes).</summary>
     private static string PipeName => $"SnapNova.App.{Environment.UserName}.{System.Diagnostics.Process.GetCurrentProcess().SessionId}";
 
@@ -63,6 +66,20 @@ internal static class Program
         var request = StartRequest.Parse(args);
 
         using var mutex = new Mutex(initiallyOwned: true, MutexName, out var createdNew);
+
+        // Restart after "Reset SnapNova": wait until the old instance has ended instead of forwarding to it.
+        if (!createdNew && Has(RestartArgument))
+        {
+            try
+            {
+                createdNew = mutex.WaitOne(TimeSpan.FromSeconds(20));
+            }
+            catch (AbandonedMutexException)
+            {
+                createdNew = true;
+            }
+        }
+
         if (!createdNew)
         {
             // Already running: forward and exit. No arguments = "show the gallery".

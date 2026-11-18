@@ -298,6 +298,10 @@
             <ctl:IconLabel Icon="{StaticResource IconPause}" Text="{DynamicResource SetHotkeyPause}" VerticalAlignment="Center" />
             <ctl:HotkeyBox Grid.Column="1" Hotkey="{Binding HotkeyPause}" />
           </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <ctl:IconLabel Icon="{StaticResource IconDragGrip}" Text="{DynamicResource SetHotkeyToolbar}" VerticalAlignment="Center" />
+            <ctl:HotkeyBox Grid.Column="1" Hotkey="{Binding HotkeyToolbar}" />
+          </Grid>
         </StackPanel>
       </Border>
       <Border Classes="card">
@@ -326,6 +330,13 @@
           </Grid>
           <Grid Classes="row" ColumnDefinitions="*,Auto">
             <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetProfile}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetProfileHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding Profiles}" SelectedItem="{Binding Profile}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
               <TextBlock Text="{DynamicResource SetQuality}" />
               <TextBlock Classes="small muted" Text="{DynamicResource SetQualityHint}" TextWrapping="Wrap" />
             </StackPanel>
@@ -345,6 +356,24 @@
               </Button>
               <ComboBox Classes="field" ItemsSource="{Binding Encoders}" SelectedItem="{Binding Encoder}" />
             </StackPanel>
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetChroma444}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetChroma444Hint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding Chroma444}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetOutputSize}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetOutputSizeHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <ComboBox Grid.Column="1" Classes="field" ItemsSource="{Binding OutputHeights}" SelectedItem="{Binding OutputHeight}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <ctl:IconLabel Icon="{StaticResource IconCountdown}" Text="{DynamicResource SetCountdown}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding VideoCountdown}" />
           </Grid>
           <Grid Classes="row" ColumnDefinitions="*,Auto">
             <ctl:IconLabel Icon="{StaticResource IconSpeaker}" Text="{DynamicResource SetSystemSound}" VerticalAlignment="Center" />
@@ -382,6 +411,15 @@
           <Grid Classes="row" ColumnDefinitions="*,Auto">
             <TextBlock Text="{DynamicResource SetShowFrame}" VerticalAlignment="Center" />
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding ShowRecordingFrame}" />
+          </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="{DynamicResource SetToolbarPosition}" />
+              <TextBlock Classes="small muted" Text="{DynamicResource SetToolbarPositionHint}" TextWrapping="Wrap" />
+            </StackPanel>
+            <Button Grid.Column="1" Classes="field" Command="{Binding ResetToolbarPositionCommand}" IsEnabled="{Binding HasToolbarPosition}">
+              <ctl:IconLabel Icon="{StaticResource IconUndo}" Text="{DynamicResource SetDefault}" />
+            </Button>
           </Grid>
           <Grid Classes="row" ColumnDefinitions="*,Auto">
             <TextBlock Text="{DynamicResource SetOpenGallery}" VerticalAlignment="Center" />
@@ -439,6 +477,33 @@
             <TextBlock Text="{DynamicResource SetSecondaryMic}" VerticalAlignment="Center" />
             <ToggleSwitch Grid.Column="1" IsChecked="{Binding SecondaryMicrophone}" />
           </Grid>
+          <Grid Classes="row" ColumnDefinitions="*,Auto">
+            <TextBlock Text="{DynamicResource SetAskSecondaryAudio}" VerticalAlignment="Center" />
+            <ToggleSwitch Grid.Column="1" IsChecked="{Binding AskSecondaryAudio}" />
+          </Grid>
+          <TextBlock Classes="label" Text="{DynamicResource SetTemplates}" Margin="0,8,0,4" />
+          <TextBlock Classes="small muted" Text="{DynamicResource SetTemplatesHint}" TextWrapping="Wrap" Margin="0,0,0,6"
+                     IsVisible="{Binding !HasTemplates}" />
+          <ItemsControl ItemsSource="{Binding Templates}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,6">
+                  <TextBox Text="{Binding Name}" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Classes="small muted" Text="{Binding AreasText}" VerticalAlignment="Center" Margin="10,0" />
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                    <Button Classes="tool" Command="{Binding $parent[ItemsControl].DataContext.DeleteTemplateCommand}" CommandParameter="{Binding}"
+                            ToolTip.Tip="{DynamicResource SetTemplateDelete}">
+                      <PathIcon Data="{StaticResource IconDelete}" />
+                    </Button>
+                    <Button Classes="tool primary" Command="{Binding $parent[ItemsControl].DataContext.StartTemplateCommand}" CommandParameter="{Binding}"
+                            ToolTip.Tip="{DynamicResource SetTemplateStart}">
+                      <PathIcon Data="{StaticResource IconVideo}" />
+                    </Button>
+                  </StackPanel>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
         </StackPanel>
       </Border>
       <Border Classes="card">
@@ -469,6 +534,17 @@
           </StackPanel>
           <Button Grid.Column="1" Classes="field" Command="{Binding OpenDataFolderCommand}" VerticalAlignment="Center">
             <ctl:IconLabel Icon="{StaticResource IconOpenInNew}" Text="{DynamicResource SetOpenData}" />
+          </Button>
+        </Grid>
+      </Border>
+      <Border Classes="card">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="2" VerticalAlignment="Center">
+            <ctl:IconLabel Icon="{StaticResource IconReset}" Text="{DynamicResource ResetTitle}" FontWeight="SemiBold" FontSize="16" />
+            <TextBlock Classes="small muted" Text="{DynamicResource ResetCardHint}" TextWrapping="Wrap" Margin="24,0,0,0" />
+          </StackPanel>
+          <Button Grid.Column="1" Classes="dangerlabel" Command="{Binding ResetAppCommand}" VerticalAlignment="Center" Margin="12,0,0,0">
+            <ctl:IconLabel Icon="{StaticResource IconReset}" Text="{DynamicResource ResetButton}" />
           </Button>
         </Grid>
       </Border>
