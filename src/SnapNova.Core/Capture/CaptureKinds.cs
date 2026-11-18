@@ -74,6 +74,14 @@ public interface ICaptureCoordinator
 
     /// <summary>Starts an additional recording next to the running one (region selection, own colour).</summary>
     Task StartSecondaryAsync();
+
+    /// <summary>Running recordings and the maximum (main + further ones).</summary>
+    int RecordingCount { get; }
+
+    int MaxRecordingCount { get; }
+
+    /// <summary>Shows or hides the recording toolbar (hotkey).</summary>
+    void ToggleToolbar();
 }
 
 public static class CaptureModeExtensions

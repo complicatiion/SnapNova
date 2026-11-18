@@ -83,6 +83,35 @@ public static class CaptureLibrary
     }
 
     /// <summary>SnapNova_2026-11-14_20-15-03.snova – with _2, _3 … when the second already exists.</summary>
+    /// <summary>Marker of further recordings of a multi-recording: "SnapNova_…_rec2" belongs to "SnapNova_…".</summary>
+    public const string PartMarker = "_rec";
+
+    private static readonly System.Text.RegularExpressions.Regex PartPattern =
+        new(@"^(?<stem>.+)_rec(?<n>[2-9])(-\d+)?$", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>File of recording <paramref name="number"/> (2…) of a multi-recording: same name as the main recording
+    /// plus "_rec{n}", so the gallery shows the parts together.</summary>
+    public static string PartFileName(string folder, string extension, string? primaryOutput, int number)
+    {
+        var stem = primaryOutput is null
+            ? System.IO.Path.GetFileNameWithoutExtension(NewFileName(folder, extension, DateTime.Now))
+            : System.IO.Path.GetFileNameWithoutExtension(primaryOutput);
+        var path = System.IO.Path.Combine(folder, $"{stem}{PartMarker}{number}{extension}");
+        for (var i = 2; File.Exists(path); i++)
+        {
+            path = System.IO.Path.Combine(folder, $"{stem}{PartMarker}{number}-{i}{extension}");
+        }
+
+        return path;
+    }
+
+    /// <summary>For "SnapNova_…_rec3": ("SnapNova_…", 3); for any other name null.</summary>
+    public static (string Stem, int Number)? PartOf(string name)
+    {
+        var match = PartPattern.Match(name);
+        return match.Success ? (match.Groups["stem"].Value, int.Parse(match.Groups["n"].Value, System.Globalization.CultureInfo.InvariantCulture)) : null;
+    }
+
     public static string NewFileName(string folder, string extension, DateTime timestamp)
     {
         var stem = "SnapNova_" + timestamp.ToString("yyyy-MM-dd_HH-mm-ss", System.Globalization.CultureInfo.InvariantCulture);

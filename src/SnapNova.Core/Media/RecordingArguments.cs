@@ -15,7 +15,19 @@ public sealed record DdagrabSource(int OutputIndex, int OffsetX, int OffsetY) : 
 /// <summary>gdigrab: GDI copy in virtual-desktop coordinates. Fallback for Remote Desktop/Citrix sessions and monitors on a second GPU.</summary>
 public sealed record GdigrabSource(int X, int Y) : VideoSource;
 
+/// <summary>What the recording is optimised for.</summary>
+public enum VideoProfile
+{
+    /// <summary>Screen content: sharp text and UI, more bits for still parts (default).</summary>
+    Screen,
+
+    /// <summary>Movement (games, videos): adaptive quantisation, smoother at the same size.</summary>
+    Motion
+}
+
 /// <param name="Quality">0 (small files) … 100 (best quality); mapped to CRF/CQ/QP of the encoder.</param>
+/// <param name="Chroma444">Full colour resolution (4:4:4) – sharp coloured text; NVENC and the CPU encoders only.</param>
+/// <param name="OutputHeight">0 = native; otherwise scaled down to this height (never up).</param>
 public sealed record RecordingOptions(
     VideoSource Source,
     int Width,
@@ -24,7 +36,10 @@ public sealed record RecordingOptions(
     string Encoder,
     int Quality,
     bool DrawMouse,
-    string OutputFile);
+    string OutputFile,
+    VideoProfile Profile = VideoProfile.Screen,
+    bool Chroma444 = false,
+    int OutputHeight = 0);
 
 /// <summary>FFmpeg command lines for recording, finishing and thumbnails. Pure functions – covered by unit tests.</summary>
 public static class RecordingArguments
@@ -41,9 +56,15 @@ public static class RecordingArguments
             throw new ArgumentException("Recording size must be even and at least 16×16 pixels.");
         }
 
-        var args = new List<string> { "-hide_banner", "-loglevel", "info", "-nostats", "-y" };
+        // -stats with a short period: the recorder reads "drop=" from the progress lines (dropped frames warning).
+        var args = new List<string> { "-hide_banner", "-loglevel", "info", "-stats", "-stats_period", "2", "-y" };
         var fps = Math.Clamp(o.Fps, 5, 60).ToString(Inv);
         string? filter;
+        var chroma444 = o.Chroma444 && Supports444(o.Encoder);
+        var scale = o.OutputHeight > 0 && o.OutputHeight < o.Height
+            ? $"scale=-2:{o.OutputHeight}:flags=lanczos,"
+            : "";
+        var pixelFormat = chroma444 ? "yuv444p" : SoftwarePixelFormat(o.Encoder);
 
         switch (o.Source)
         {
@@ -51,14 +72,16 @@ public static class RecordingArguments
                 args.AddRange(["-f", "lavfi", "-i",
                     $"ddagrab=output_idx={dda.OutputIndex}:framerate={fps}:video_size={o.Width}x{o.Height}" +
                     $":offset_x={dda.OffsetX}:offset_y={dda.OffsetY}:draw_mouse={(o.DrawMouse ? 1 : 0)}"]);
-                // GPU encoders read the D3D11 frames; everything else needs them in system memory first.
-                filter = AcceptsD3D11(o.Encoder) ? null : "hwdownload,format=bgra,format=" + SoftwarePixelFormat(o.Encoder);
+                // GPU encoders read the D3D11 frames directly; 4:4:4, scaling and the other encoders need system memory.
+                filter = AcceptsD3D11(o.Encoder) && !chroma444 && scale.Length == 0
+                    ? null
+                    : "hwdownload,format=bgra," + scale + "format=" + pixelFormat;
                 break;
             case GdigrabSource gdi:
                 args.AddRange(["-f", "gdigrab", "-framerate", fps, "-draw_mouse", o.DrawMouse ? "1" : "0",
                     "-offset_x", gdi.X.ToString(Inv), "-offset_y", gdi.Y.ToString(Inv),
                     "-video_size", $"{o.Width}x{o.Height}", "-i", "desktop"]);
-                filter = "format=" + SoftwarePixelFormat(o.Encoder);
+                filter = scale + "format=" + pixelFormat;
                 break;
             default:
                 throw new ArgumentOutOfRangeException(nameof(o), "Unknown video source.");
@@ -70,11 +93,27 @@ public static class RecordingArguments
         }
 
         args.AddRange(["-c:v", o.Encoder]);
-        args.AddRange(EncoderQuality(o.Encoder, o.Quality));
+        args.AddRange(EncoderQuality(o.Encoder, o.Quality, o.Profile));
+        if (chroma444)
+        {
+            args.AddRange(Profile444(o.Encoder));
+        }
+
         args.AddRange(ContainerFlags(o.OutputFile));
         args.Add(o.OutputFile);
         return args;
     }
+
+    /// <summary>Encoders that can write 4:4:4 (QSV, AMF and Media Foundation fall back to 4:2:0).</summary>
+    public static bool Supports444(string encoder) => encoder is "h264_nvenc" or "hevc_nvenc" or "libx264" or "libx265";
+
+    private static IReadOnlyList<string> Profile444(string encoder) => encoder switch
+    {
+        "h264_nvenc" => ["-profile:v", "high444p"],
+        "hevc_nvenc" => ["-profile:v", "rext"],
+        "libx264" => ["-profile:v", "high444"],
+        _ => []
+    };
 
     /// <summary>
     /// Joins the recorded segments (one per pause) and mixes the audio tracks into the final MP4.
@@ -343,7 +382,7 @@ public static class RecordingArguments
     public static IReadOnlyList<string> DecodeVideo(string input, TimeSpan position, int width, int height, int fps) =>
     [
         "-hide_banner", "-loglevel", "error", "-ss", Time(position), "-i", input, "-an",
-        "-vf", $"fps={Math.Clamp(fps, 1, 60)},scale={width}:{height}:flags=bilinear", "-pix_fmt", "bgra", "-f", "rawvideo", "pipe:1"
+        "-vf", $"fps={Math.Clamp(fps, 1, 60)},scale={width}:{height}:flags=lanczos", "-pix_fmt", "bgra", "-f", "rawvideo", "pipe:1"
     ];
 
     /// <summary>Player: 48 kHz stereo 16-bit PCM from a position.</summary>
@@ -352,21 +391,29 @@ public static class RecordingArguments
         "-hide_banner", "-loglevel", "error", "-ss", Time(position), "-i", input, "-vn", "-ac", "2", "-ar", "48000", "-f", "s16le", "pipe:1"
     ];
 
-    /// <summary>Quality 0…100 → encoder-specific constant-quality settings (lower value = better for CRF/CQ/QP).</summary>
-    internal static IReadOnlyList<string> EncoderQuality(string encoder, int quality)
+    /// <summary>Quality 0…100 → constant-quality value of CRF/CQ/QP (lower = better). Screen: 100 → 16, 70 → 20, 0 → 30.</summary>
+    public static int QualityValue(int quality, VideoProfile profile = VideoProfile.Screen)
     {
         quality = Math.Clamp(quality, 0, 100);
-        var q = (35 - quality * 17 / 100).ToString(Inv); // 100 → 18, 70 → 24, 0 → 35
+        return (profile == VideoProfile.Screen ? 30 : 32) - quality * 14 / 100;
+    }
+
+    /// <summary>Encoder-specific constant-quality settings. Screen content: no adaptive quantisation (it smears text).</summary>
+    internal static IReadOnlyList<string> EncoderQuality(string encoder, int quality, VideoProfile profile = VideoProfile.Screen)
+    {
+        var q = QualityValue(quality, profile).ToString(Inv);
+        var motion = profile == VideoProfile.Motion;
         return encoder switch
         {
-            "h264_nvenc" or "hevc_nvenc" => ["-preset", "p5", "-rc", "vbr", "-cq", q, "-b:v", "0"],
-            "h264_amf" or "hevc_amf" => ["-quality", "balanced", "-rc", "cqp", "-qp_i", q, "-qp_p", q],
-            "h264_qsv" or "hevc_qsv" => ["-preset", "medium", "-global_quality", q],
-            "hevc_mf" => ["-rate_control", "quality", "-quality", Math.Clamp(quality, 1, 100).ToString(Inv)],
+            "h264_nvenc" or "hevc_nvenc" => motion
+                ? ["-preset", "p5", "-tune", "hq", "-rc", "vbr", "-cq", q, "-b:v", "0", "-spatial-aq", "1", "-temporal-aq", "1"]
+                : ["-preset", "p5", "-tune", "hq", "-rc", "vbr", "-cq", q, "-b:v", "0"],
+            "h264_amf" => ["-quality", "quality", "-rc", "cqp", "-qp_i", q, "-qp_p", q, "-qp_b", q],
+            "hevc_amf" => ["-quality", "quality", "-rc", "cqp", "-qp_i", q, "-qp_p", q],
+            "h264_qsv" or "hevc_qsv" => ["-preset", motion ? "medium" : "slower", "-global_quality", q],
+            "hevc_mf" or "h264_mf" => ["-rate_control", "quality", "-quality", Math.Clamp(100 - QualityValue(quality, profile) * 2, 40, 100).ToString(Inv)],
             "libx265" => ["-preset", "fast", "-crf", q, "-tag:v", "hvc1"],
-            // Media Foundation: quality-based VBR ("quality" 0–100, higher = better)
-            "h264_mf" => ["-rate_control", "quality", "-quality", Math.Clamp(quality, 1, 100).ToString(Inv)],
-            "libx264" => ["-preset", "veryfast", "-crf", q],
+            "libx264" => motion ? ["-preset", "veryfast", "-crf", q] : ["-preset", "faster", "-crf", q, "-tune", "animation"],
             _ => []
         };
     }

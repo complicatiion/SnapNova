@@ -10,7 +10,8 @@ namespace SnapNova.Core.Media;
 public static class FfmpegProbe
 {
     /// <summary>Order of preference: GPU encoders, then Media Foundation (Windows, also hardware where available), then x264 (GPL build).</summary>
-    public static readonly string[] H264Candidates = ["h264_nvenc", "h264_qsv", "h264_amf", "h264_mf", "libx264"];
+    /// <summary>Hardware first; the CPU encoder before Media Foundation, whose quality mode gives soft pictures.</summary>
+    public static readonly string[] H264Candidates = ["h264_nvenc", "h264_qsv", "h264_amf", "libx264", "h264_mf"];
 
     public static async Task<string?> VersionAsync(string executable, CancellationToken ct)
     {
