@@ -19,7 +19,7 @@ Video recording runs completely offline. Screen content is grabbed by FFmpeg on 
 | --- | --- |
 | `%LocalAppData%\SnapNova\settings.json` (portable: `data\settings.json`) | settings (language, theme, hotkeys, capture folder, video options, window state) |
 | image and video folders (default `Pictures\SnapNova`, `Videos\SnapNova`) | your captures: `.snova` (original image, annotations, recognized text, origin: time, program name and window title of the captured window, screen area), exported PNG/JPEG/WebP, MP4/MKV videos, `.cursor.json` (mouse track of a recording for *Follow the mouse*) |
-| `.snapnova-trash` in each capture folder | deleted captures until restored or removed (default after 30 days); with *Windows recycle bin* chosen, local captures go to the Windows recycle bin instead |
+| `.snapnova-trash` in each capture folder | deleted captures until restored or removed (default after 7 days); with *Windows recycle bin* chosen, local captures go to the Windows recycle bin instead |
 | `%LocalAppData%\SnapNova\updates` | downloaded update (only after your click) |
 | `%LocalAppData%\SnapNova\thumbs` | preview images of videos for the gallery |
 | `%LocalAppData%\SnapNova\tools\ffmpeg` | downloaded FFmpeg (only after consent), `ffmpeg.json` with the date of your consent, version, source and SHA-256 |
@@ -29,6 +29,8 @@ Video recording runs completely offline. Screen content is grabbed by FFmpeg on 
 | `HKCU\Control Panel\Keyboard` → `PrintScreenKeyForSnippingEnabled` | only when you click *Use for SnapNova* at the Print key setting |
 
 Uninstalling asks whether settings, thumbnails and FFmpeg should be deleted. **Your captures are never deleted by the uninstaller.**
+
+*Settings › Reset SnapNova* deletes the settings, caches and temporary files in `%LocalAppData%\SnapNova` (FFmpeg only if chosen) and removes the per-user autostart entry; the defaults apply at the next start. Captures are deleted only with *Also delete all captures* plus an explicit confirmation – and then only files SnapNova created (`.snova`, `SnapNova_*` images/videos, mouse tracks, `.snapnova-trash`).
 
 ## Clipboard
 

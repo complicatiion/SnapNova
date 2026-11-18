@@ -196,7 +196,7 @@ public class RecordingArgumentTests
         var joined = string.Join(' ', RecordingArguments.Record(new RecordingOptions(new GdigrabSource(-1920, 0), 1920, 1080, 60, "libx264", 100, true, "o.mp4")));
         Assert.Contains("-f gdigrab -framerate 60", joined);
         Assert.Contains("-offset_x -1920 -offset_y 0", joined);
-        Assert.Contains("-crf 18", joined);
+        Assert.Contains("-crf 16", joined);
     }
 
     [Fact]

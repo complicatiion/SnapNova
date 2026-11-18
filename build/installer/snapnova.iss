@@ -5,7 +5,7 @@
 ;   artifacts\publish\SnapNova (self-contained, with the .NET runtime) and runs this script with ISCC (Inno Setup 6).
 ;   Manually:
 ;   1. Publish the app:  powershell -NoProfile -ExecutionPolicy Bypass -File .\build\publish.ps1 -SkipInstaller
-;   2. ISCC /DAppVersion=0.0.7 /DSourceDir=..\..\artifacts\publish\SnapNova /DOutputDir=..\..\artifacts snapnova.iss
+;   2. ISCC /DAppVersion=0.0.8 /DSourceDir=..\..\artifacts\publish\SnapNova /DOutputDir=..\..\artifacts snapnova.iss
 ;   build\publish.ps1 does both steps (tests, publish, portable ZIP, setup, SHA-256).
 ;
 ; Install mode:
@@ -32,7 +32,7 @@
 ; Targets: Windows 10 2004 (build 19041) or later, Windows 11, 64-bit.
 
 #ifndef AppVersion
-  #define AppVersion "0.0.7"
+  #define AppVersion "0.0.8"
 #endif
 #ifndef SourceDir
   #define SourceDir "..\..\artifacts\publish\SnapNova"
